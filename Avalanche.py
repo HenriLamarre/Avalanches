@@ -94,21 +94,19 @@ class avalanche():
             range_list_j = range(self.width_j[0], self.width_j[1])
             range_list_k = range(self.width_k[0], self.width_k[1])
 
-        for j in range_list_j:
-            for k in range_list_k:
-                NN = np.sum([self.lat_B[j - 1][k], self.lat_B[j + 1][k],
-                             self.lat_B[j][k - 1], self.lat_B[j][k + 1]])
-                Zk = self.lat_B[j][k] - NN / 2 / self.D
-                if np.abs(Zk) > self.Z_c:
-                    self.lat_C[j][k] = self.lat_C[j][k] - self.Z_c * 2 * self.D / self.s
-                    self.lat_C[j - 1][k] = self.lat_C[j - 1][k] + self.Z_c / self.s
-                    self.lat_C[j + 1][k] = self.lat_C[j + 1][k] + self.Z_c / self.s
-                    self.lat_C[j][k - 1] = self.lat_C[j][k - 1] + self.Z_c / self.s
-                    self.lat_C[j][k + 1] = self.lat_C[j][k + 1] + self.Z_c / self.s
-                    g = 2 * self.D / self.s * (2 * np.abs(Zk) / self.Z_c - 1) * self.Z_c ** 2
-                    e += g
 
-        # If there is an avalanche
+        NN = np.zeros((self.N, self.N))
+        NN[1:-1, 1:-1] = self.lat_B[0:-2, 1:-1] + self.lat_B[1:-1, 0:-2] + self.lat_B[2:, 1:-1] + self.lat_B[1:-1, 2:]
+        Zk = self.lat_B - NN / 2 / self.D
+        unst = np.where(Zk > self.Z_c, 1, 0)
+        self.lat_C += -unst*self.Z_c * 2 * self.D / self.s +\
+                    np.roll(unst, 1, axis=0) * self.Z_c / self.s + \
+                    np.roll(unst, 1, axis=1) * self.Z_c / self.s + \
+                    np.roll(unst, -1, axis=0) * self.Z_c / self.s + \
+                    np.roll(unst, -1, axis=1) * self.Z_c / self.s
+        e = np.sum(2 * self.D / self.s * (2 * np.abs(Zk[Zk > self.Z_c]) / self.Z_c - 1) * self.Z_c ** 2)
+
+            # If there is an avalanche
         if e > 0:
             if not self.avalanching:
                 self.a_statistic_init(step_time)
@@ -162,8 +160,8 @@ class avalanche():
 
 if __name__ == '__main__':
     start = time.time()
-    avalanche1 = avalanche(2, 8, -0.2, 0.8, images=False)
-    time_ = int(avalanche1.sugg_time)
+    avalanche1 = avalanche(2, 16, -0.2, 0.8, images=False)
+    time_ = int(avalanche1.sugg_time*3/2)
     for i in range(time_):
         if not i % 10000:
             print(str(int(i/time_*100)) + '%')
