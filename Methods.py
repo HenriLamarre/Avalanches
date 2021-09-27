@@ -8,8 +8,8 @@ __author__      = "Henri Lamarre"
 
 import numpy as np
 import matplotlib.pyplot as plt
-import os
-import matplotlib.cm as cm
+import matplotlib
+matplotlib.use('TkAgg')
 import matplotlib.animation as animation
 
 def make_movie(img):
