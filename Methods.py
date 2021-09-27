@@ -58,5 +58,5 @@ def plot_statistics(E,P,T):
     ax2.set_ylabel('P/e0')
     ax2.set_xlabel('T')
     plt.tight_layout()
-
+    plt.savefig('statistics.png')
     plt.show()

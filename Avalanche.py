@@ -160,10 +160,10 @@ class avalanche():
 
 if __name__ == '__main__':
     start = time.time()
-    avalanche1 = avalanche(2, 16, -0.2, 0.8, images=False)
+    avalanche1 = avalanche(2, 32, -0.2, 0.8, images=False)
     time_ = int(avalanche1.sugg_time*3/2)
     for i in range(time_):
-        if not i % 10000:
+        if not i % 100000:
             print(str(int(i/time_*100)) + '%')
         avalanche1.step(i)
         # met.make_movie(avalanche1.mat_history)
