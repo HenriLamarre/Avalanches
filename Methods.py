@@ -30,10 +30,33 @@ def plot_energies(el, er, t, e0):
     as a function of time'''
     fig = plt.figure()
     ax1 = plt.subplot(211)
-    plt.plot(np.arange(t), np.array(er))
+    ax1.plot(np.arange(t), np.array(er))
+    ax1.set_ylabel('er/e0')
 
     # share x only
     ax2 = plt.subplot(212, sharex=ax1)
-    plt.plot(np.arange(t), np.array(el)/e0)
+    ax2.plot(np.arange(t), np.array(el)/e0)
+    ax2.set_ylabel('el/e0')
     plt.savefig('energies.png')
+    plt.show()
+
+def plot_statistics(E,P,T):
+    """Plot the avalanche statistics"""
+    fig = plt.figure()
+    ax1 = plt.subplot(121)
+    ax1.scatter(P, E, marker='.')
+    ax1.set_yscale('log')
+    ax1.set_xscale('log')
+    ax1.set_xlabel('P/e0')
+    ax1.set_ylabel('E/e0')
+
+    # share y only
+    ax2 = plt.subplot(122)
+    ax2.scatter(T, P, marker='.')
+    ax2.set_yscale('log')
+    ax2.set_xscale('log')
+    ax2.set_ylabel('P/e0')
+    ax2.set_xlabel('T')
+    plt.tight_layout()
+
     plt.show()

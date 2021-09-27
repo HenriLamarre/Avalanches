@@ -23,11 +23,9 @@ class avalanche():
 
         # These quantities allow us to compute the right Z_c to find
         # the SOC state as well as the suggested time to get there
-        db = 0.1
-        self.Z_c = db / 0.0001 * 6 * 2 / self.N ** 2
-        B_a = self.Z_c / 6 / 2 * self.N ** 2
-        self.sugg_time = int(self.N ** 2 * B_a / db)
-
+        db = (self.sigma1+self.sigma2)/2
+        self.Z_c = db / 1e-4 * self.D * 6 / self.N**2
+        self.sugg_time = int(self.N ** 2 * 1e4)
 
         # Lat_B is the main lattice information containing the magnetic field
         self.lat_B = np.zeros((self.N, self.N))
@@ -51,6 +49,30 @@ class avalanche():
         # Remember the smallest j and largest k of the avalanche for speed
         self.width_j = [1, self.N - 1]
         self.width_k = [1, self.N - 1]
+        # keeps track if we are avalanching
+        self.avalanching = False
+        # Statistics
+        self.a_P = []
+        self.a_T = []
+        self.a_E = []
+
+    def a_statistic_init(self, step_time):
+        """Initializes the statistics of an avalanche
+        P is the peak energy
+        E is the total energy
+        T is the time duration"""
+        self.avalanching = True
+
+        self.a_P.append([])
+        self.a_T.append([])
+        self.a_E.append([])
+
+        self.a_P[-1].append(0)
+        self.a_E[-1].append(0)
+        #beggining time of the avalanche
+        self.a_T[-1].append(step_time)
+
+
 
     def step(self, step_time):
         """ Updates the lattice either by adding
@@ -85,31 +107,38 @@ class avalanche():
                     self.lat_C[j][k + 1] = self.lat_C[j][k + 1] + self.Z_c / self.s
                     g = 2 * self.D / self.s * (2 * np.abs(Zk) / self.Z_c - 1) * self.Z_c ** 2
                     e += g
+
         # If there is an avalanche
         if e > 0:
-            # Reset the width of the avalanche
-            self.width_j = [self.N - 1, 0]
-            self.width_k = [self.N - 1, 0]
-            for j in range(1, self.N - 1):
-                for k in range(1, self.N - 1):
-                    # Updates the width of the avalanche
-                    if self.lat_C[j][k] != 0:
-                        if j < self.width_j[0]:
-                            self.width_j[0] = j
-                        elif j > self.width_j[1]:
-                            self.width_j[1] = j
-                        if k < self.width_k[0]:
-                            self.width_k[0] = k
-                        elif k > self.width_k[1]:
-                            self.width_k[1] = k
+            if not self.avalanching:
+                self.a_statistic_init(step_time)
 
-                    # updates the lattice array
-                    self.lat_B[j][k] = self.lat_B[j][k] + self.lat_C[j][k]
-                    self.lat_C[j][k] = 0
+            # update peak energy release
+            if self.a_P[-1] < e/self.e0:
+                self.a_P[-1] = e/self.e0
+            # Update total energy release
+            self.a_E[-1] += e/self.e0
+
+            # Reset the width of the avalanche
+            (nzx, nzy) = np.nonzero(self.lat_C)
+            self.width_j[0] = min(nzx[nzx> 0])
+            self.width_j[1] = max(nzx[nzx< self.N])
+            self.width_k[0] = min(nzy[nzy > 0])
+            self.width_k[1] = max(nzy[nzy < self.N])
+
+            # updates the lattice array
+            self.lat_B[1:-1, 1:-1] += self.lat_C[1:-1, 1:-1]
+            self.lat_C = np.zeros((self.N, self.N))
+
             # makes sure that we check every lattice element in next step
             self.lattice_increment = None
         # Otherwise, add increment to grid
         else:
+            # End of the avalanche
+            if self.avalanching:
+                self.avalanching = False
+                # Ending time of the avalanche
+                self.a_T[-1][0] = step_time - self.a_T[-1][0]
             # Find random lattice element
             randx, randy = np.random.randint(1, high=self.N - 1), np.random.randint(1, high=self.N - 1)
             # Random magnetism increment
@@ -141,5 +170,11 @@ if __name__ == '__main__':
         avalanche1.step(i)
         # met.make_movie(avalanche1.mat_history)
     end = time.time()
-    print(end - start)
+    print(str(round(end - start,2))+'s')
+    # print(avalanche1.a_P, avalanche1.a_T)
     met.plot_energies(avalanche1.el, avalanche1.er, time_, avalanche1.e0)
+    # We ignore the last avalanche because the stats are truncated
+    avalanche1.a_E.pop()
+    avalanche1.a_P.pop()
+    avalanche1.a_T.pop()
+    met.plot_statistics(avalanche1.a_E, avalanche1.a_P, avalanche1.a_T)
