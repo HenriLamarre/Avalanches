@@ -30,7 +30,7 @@ def plot_energies(el, er, t, e0):
     as a function of time'''
     fig = plt.figure()
     ax1 = plt.subplot(211)
-    plt.plot(np.arange(t), np.array(er)/e0)
+    plt.plot(np.arange(t), np.array(er))
 
     # share x only
     ax2 = plt.subplot(212, sharex=ax1)

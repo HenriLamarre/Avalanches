@@ -6,6 +6,7 @@ __author__ = "Henri Lamarre"
 
 import numpy as np
 import Methods as met
+import time
 
 
 class avalanche():
@@ -86,20 +87,28 @@ class avalanche():
                     e += g
         # If there is an avalanche
         if e > 0:
-            # Rescale the mask of the avalanche
-            (fnx,fny) = np.nonzero(self.lat_C)
-            self.width_j[0] = min(fnx[fnx>0])
-            self.width_j[1] = max(fnx[fny<self.N-1])
-            self.width_k[0] = min(fny[fny>0])
-            self.width_k[1] = max(fny[fny<self.N-1])
-            print(self.width_k, self.width_j)
+            # Reset the width of the avalanche
+            self.width_j = [self.N - 1, 0]
+            self.width_k = [self.N - 1, 0]
+            for j in range(1, self.N - 1):
+                for k in range(1, self.N - 1):
+                    # Updates the width of the avalanche
+                    if self.lat_C[j][k] != 0:
+                        if j < self.width_j[0]:
+                            self.width_j[0] = j
+                        elif j > self.width_j[1]:
+                            self.width_j[1] = j
+                        if k < self.width_k[0]:
+                            self.width_k[0] = k
+                        elif k > self.width_k[1]:
+                            self.width_k[1] = k
 
-            # updates the lattice array
-            self.lat_B[1: -1][1: -1] += self.lat_C[1: -1][1: -1]
-            self.lat_C = np.zeros((self.N, self.N))
-            # We will not check only the lattice increment in the next loop
-            self.lattice_increment = False
-        # Otherwise, add a magnetism increment
+                    # updates the lattice array
+                    self.lat_B[j][k] = self.lat_B[j][k] + self.lat_C[j][k]
+                    self.lat_C[j][k] = 0
+            # makes sure that we check every lattice element in next step
+            self.lattice_increment = None
+        # Otherwise, add increment to grid
         else:
             # Find random lattice element
             randx, randy = np.random.randint(1, high=self.N - 1), np.random.randint(1, high=self.N - 1)
@@ -123,11 +132,14 @@ class avalanche():
 
 
 if __name__ == '__main__':
-    avalanche1 = avalanche(2, 6, -0.2, 0.8, images=False)
-    time = int(avalanche1.sugg_time)
-    for i in range(time):
+    start = time.time()
+    avalanche1 = avalanche(2, 8, -0.2, 0.8, images=False)
+    time_ = int(avalanche1.sugg_time)
+    for i in range(time_):
         if not i % 10000:
-            print(i)
+            print(str(int(i/time_*100)) + '%')
         avalanche1.step(i)
         # met.make_movie(avalanche1.mat_history)
-    met.plot_energies(avalanche1.el, avalanche1.er, time, avalanche1.e0)
+    end = time.time()
+    print(end - start)
+    met.plot_energies(avalanche1.el, avalanche1.er, time_, avalanche1.e0)
