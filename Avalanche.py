@@ -72,7 +72,9 @@ class avalanche():
         #beggining time of the avalanche
         self.a_T[-1].append(step_time)
 
-
+    def save_state(self, path):
+        '''Saves the state of lat_B to path. Useful if lat_B is in SOC'''
+        np.savez(path, lat_B=self.lat_B)
 
     def step(self, step_time):
         """ Updates the lattice either by adding
@@ -94,16 +96,21 @@ class avalanche():
             range_list_j = range(self.width_j[0], self.width_j[1])
             range_list_k = range(self.width_k[0], self.width_k[1])
 
-
+        # Initialize nearest neighbours
         NN = np.zeros((self.N, self.N))
+        # Grid of nearest neighbours
         NN[1:-1, 1:-1] = self.lat_B[0:-2, 1:-1] + self.lat_B[1:-1, 0:-2] + self.lat_B[2:, 1:-1] + self.lat_B[1:-1, 2:]
+        # Grid of curvatures
         Zk = self.lat_B - NN / 2 / self.D
+        # Grid of 1 if unstable and 0 if stable
         unst = np.where(Zk > self.Z_c, 1, 0)
+        # unstable points decrease and neighbours increase
         self.lat_C += -unst*self.Z_c * 2 * self.D / self.s +\
                     np.roll(unst, 1, axis=0) * self.Z_c / self.s + \
                     np.roll(unst, 1, axis=1) * self.Z_c / self.s + \
                     np.roll(unst, -1, axis=0) * self.Z_c / self.s + \
                     np.roll(unst, -1, axis=1) * self.Z_c / self.s
+        # Energy dissipated in the process
         e = np.sum(2 * self.D / self.s * (2 * np.abs(Zk[Zk > self.Z_c]) / self.Z_c - 1) * self.Z_c ** 2)
 
             # If there is an avalanche
@@ -157,19 +164,30 @@ class avalanche():
                 list_holder = list(np.copy(self.lat_B))
                 self.mat_history.append(list_holder)
 
+    def loop(self, total_time, frequency, save=False, load=False):
+        """Run the avalanche simulation for total_Time iterations.
+        print the loading bar at 1/frequency iterations. Prints the time
+        it took to run at the end of the loop.
+        if save, saves lat_B to 'save'
+        if load, loads the numpy array 'load' as lat_B"""
+        if load:
+            self.lat_B = np.load(load)['lat_B']
+        start = time.time()
+        for i in range(int(total_time)):
+            if not i % int(frequency):
+                print(str(int(i / time_ * 100)) + '%')
+            self.step(i)
+        end = time.time()
+        if save:
+            self.save_state(save)
+        print('loop took '+str(round(end - start, 2)) + 's')
+
 
 if __name__ == '__main__':
-    start = time.time()
     avalanche1 = avalanche(2, 32, -0.2, 0.8, images=False)
     time_ = int(avalanche1.sugg_time*3/2)
-    for i in range(time_):
-        if not i % 100000:
-            print(str(int(i/time_*100)) + '%')
-        avalanche1.step(i)
-        # met.make_movie(avalanche1.mat_history)
-    end = time.time()
-    print(str(round(end - start,2))+'s')
-    # print(avalanche1.a_P, avalanche1.a_T)
+    avalanche1.loop(time_, 10000, save = '/home/hlamarre/PycharmProjects/Avalanches/Saves/N32_SOC.npz',
+                    load = '/home/hlamarre/PycharmProjects/Avalanches/Saves/N32_SOC.npz')
     met.plot_energies(avalanche1.el, avalanche1.er, time_, avalanche1.e0)
     # We ignore the last avalanche because the stats are truncated
     avalanche1.a_E.pop()
