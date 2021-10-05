@@ -184,9 +184,9 @@ class Avalanche:
         end = time.time()
         print('loop took '+str(round(end - start, 2)) + 's')
         # The stats about the last avalanche can be misleading
-        avalanche1.a_E.pop()
-        avalanche1.a_P.pop()
-        avalanche1.a_T.pop()
+        self.a_E.pop()
+        self.a_P.pop()
+        self.a_T.pop()
         if save:  # Save the state of lat_B
             self.save_state(save)
         if stats:  # Save the stats of the avalanche
@@ -203,7 +203,9 @@ if __name__ == '__main__':
     # Met.plot_statistics(avalanche1.a_E, avalanche1.a_P, avalanche1.a_T)
 
     avalanche2 = Avalanche(2, 32, -0.2, 0.8, images=False, nn_type='Hex')
-    time_ = int(avalanche2.sugg_time/4)
-    avalanche2.loop(time_, 100000, stats = '/home/hlamarre/PycharmProjects/Avalanches/Saves/N32_hex_stats.npz')
+    time_ = int(avalanche2.sugg_time)
+    avalanche2.loop(time_, 100000, stats = '/home/hlamarre/PycharmProjects/Avalanches/Saves/N32_hex_stats.npz',
+                    save = '/home/hlamarre/PycharmProjects/Avalanches/Saves/N32_hex_SOC.npz',
+                    load = '/home/hlamarre/PycharmProjects/Avalanches/Saves/N32_hex_SOC.npz')
     Met.plot_energies(avalanche2.el, avalanche2.er, time_, avalanche2.e0)
     Met.plot_statistics(avalanche2.a_E, avalanche2.a_P, avalanche2.a_T)

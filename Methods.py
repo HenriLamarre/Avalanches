@@ -3,14 +3,15 @@ of the avalanche.py class
 
 Created 2021-09-07"""
 
-__author__      = "Henri Lamarre"
-
+__author__ = "Henri Lamarre"
 
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib
-matplotlib.use('TkAgg')
 import matplotlib.animation as animation
+from scipy.optimize import curve_fit
+# matplotlib.use('TkAgg')
+
 
 def make_movie(img):
     ''' Makes a movie mp4 with the supplied frames in img
@@ -24,6 +25,7 @@ def make_movie(img):
                                     repeat_delay=1000)
     ani.save('avalanche.mp4')
     # plt.show()
+
 
 def plot_energies(el, er, t, e0):
     ''' Plots the released energy (el) and lattice energy (er)
@@ -39,6 +41,7 @@ def plot_energies(el, er, t, e0):
     ax2.set_ylabel('el/e0')
     plt.savefig('energies.png')
     plt.show()
+
 
 def plot_statistics(E,P,T):
     """Plot the avalanche statistics"""
@@ -60,3 +63,49 @@ def plot_statistics(E,P,T):
     plt.tight_layout()
     plt.savefig('statistics.png')
     plt.show()
+
+
+def line(x, a, b):  # equation of a line
+    return -a * x + b
+
+
+def compute_slope(array, plot=False):
+    """Computes the coefficient of the slope of the array. Makes a plot showing the fit
+    returns the slope"""
+    space = np.logspace(np.log(min(array)), np.log(max(array)), 70, base=np.e)  # Logspace for the fitting
+    hist = np.histogram(array, bins=space[10:-15], density=True)  # density histogram
+    for i in range(len(hist[0])):  # transforms 0 into small values for no errors
+        if hist[0][i] < 1e-15:
+            hist[0][i] = 1e-15
+    x = (hist[1][:-1] + hist[1][1:]) / 2  # Average the bins sides for the fitting
+    popt, pcov = curve_fit(line, np.log(x), np.log(hist[0]))  # fitting of the line
+    if plot:  # if we want to see the fit
+        plt.figure()
+        plt.scatter(np.log(x), np.log(hist[0]))
+        plt.plot(np.log(x), line(np.log(x), popt[0], popt[1]))
+        plt.show()
+    return popt[0]  # returns the slope
+
+
+def slope_stats(path_, plot=False):
+    """For a stat numpy file, compute the T,P,E slopes and prints them"""
+    stats = np.load(path_)
+    E = stats['a_E']  # Total energy release
+    P = stats['a_P']  # Peak energy release
+    T = stats['a_T']  # Time of avalanches
+    del_index = []  #Remove the small and big avalanches for bias
+    for i in range(len(E)):
+        if np.log10(P[i]) < 1 or np.log10(T[i]) < 1.5 or np.log10(P[i]) > 3:
+            del_index.append(i)
+    E = np.delete(E, del_index)
+    P = np.delete(P, del_index)
+    T = np.delete(T, del_index)
+    slope_E = compute_slope(E, plot)  # Compute the slopes
+    slope_P = compute_slope(P, plot)
+    slope_T = compute_slope(T, plot)
+    print('E = {}, P = {}, T = {}'.format(slope_E, slope_P, slope_T))
+
+
+if __name__ == '__main__':
+    slope_stats('/home/hlamarre/PycharmProjects/Avalanches/Saves/N32_hex_stats.npz', plot=True)
+    slope_stats('/home/hlamarre/PycharmProjects/Avalanches/Saves/N32_stats.npz', plot=True)
