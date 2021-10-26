@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 import matplotlib
 import matplotlib.animation as animation
 from scipy.optimize import curve_fit
-# matplotlib.use('TkAgg')
+# matplotlib.use('nbAgg')
 
 
 def make_movie(img):
@@ -39,7 +39,7 @@ def plot_energies(el, er, t, e0):
     ax2 = plt.subplot(212, sharex=ax1)
     ax2.plot(np.arange(t), np.array(el)/e0)
     ax2.set_ylabel('el/e0')
-    plt.savefig('energies.png')
+    # plt.savefig('energies.png')
     plt.show()
 
 
