@@ -58,37 +58,40 @@ class Farhang:
         Zc = np.random.normal(1, 0.01)  # normal distribution of threshold
         e = 0  # default energy released
         curv = np.zeros((self.N, self.N))
-        curv[1:-1, 1:-1] = self.lat_B[1:-1, 1:-1] - 1/4 * (self.lat_B[1:-1, 0:-2] + self.lat_B[1:-1, 2:] +
-                                                 self.lat_B[0:-2, 1:-1] + self.lat_B[2:, 1:-1])
-        unst = np.flatnonzero(np.where(curv > Zc, 1, 0))
-        int_list = [unst % self.N, unst//self.N]
-        if unst.size:
-            for k in range(len(int_list[0])):
-                i = int_list[0][k]
-                j = int_list[1][k]
-                [r1, r2, r3] = np.random.uniform(0, 1, size=(3, 1))  # Stochastic redistribution
-                a = r1 + r2 + r3
-                # Theta is used in finding x that minimizes lattice energy
-                theta = r1 * (-2 * self.current(self.lat_B, i, j - 1) + 3 * self.lat_B[i, j - 1]) + \
-                        r2 * (-2 * self.current(self.lat_B, i + 1, j) + 3 * self.lat_B[i + 1, j]) + \
-                        r3 * (-2 * self.current(self.lat_B, i, j + 1) + 3 * self.lat_B[i, j + 1]) + \
-                        a * (2 * self.current(self.lat_B, i - 1, j) - 3 * self.lat_B[i - 1, j])
-                x = scipy.optimize.root(self.opt_x, 1, args=(Zc, r1, r2, r3, theta))['x'][0]  # Finds the optimal x
-                # New lat is defined to check the condition that the energy difference is actually positive
-                new_lat = self.lat_B.copy()
-                new_lat[i, j] -= 4 / 5 * Zc
-                new_lat[i, j - 1] += 4 / 5 * r1 / (x + a) * Zc
-                new_lat[i, j + 1] += 4 / 5 * r3 / (x + a) * Zc
-                new_lat[i - 1, j] += 4 / 5 * x / (x + a) * Zc
-                new_lat[i + 1, j] += 4 / 5 * r2 / (x + a) * Zc
-                deltaE = self.e_total(new_lat) - self.e_total(self.lat_B)  # The energy difference
-                if deltaE < 0:  # If there should be an avalanche
-                    self.lat_C[i, j] -= 4 / 5 * Zc  # Updates the avalanche lattice array
-                    self.lat_C[i, j - 1] += 4 / 5 * r1 / (x + a) * Zc
-                    self.lat_C[i, j + 1] += 4 / 5 * r3 / (x + a) * Zc
-                    self.lat_C[i - 1, j] += 4 / 5 * x / (x + a) * Zc
-                    self.lat_C[i + 1, j] += 4 / 5 * r2 / (x + a) * Zc
-                    self.avalanching = True  # Will be avalanching
+        curv[1:-1, 1:-1] = self.lat_B[1:-1, 1:-1] - 1 / 4 * (self.lat_B[1:-1, 0:-2] + self.lat_B[1:-1, 2:] +
+                                                   self.lat_B[0:-2, 1:-1] + self.lat_B[2:, 1:-1])
+        # unst = np.flatnonzero(np.where(curv > Zc, 1, 0))
+        # int_list = [unst % self.N, unst // self.N]
+        # if unst.size:
+        #     for k in range(len(int_list[0])):
+        #         i = int_list[0][k]
+        #         j = int_list[1][k]
+        for i in range(1, self.N - 1):
+            for j in range(1, self.N - 1):
+                if curv[i][j] > Zc:
+                    [r1, r2, r3] = np.random.uniform(0, 1, size=(3, 1))  # Stochastic redistribution
+                    a = r1 + r2 + r3
+                    # Theta is used in finding x that minimizes lattice energy
+                    theta = r1 * (-2 * self.current(self.lat_B, i, j - 1) + 3 * self.lat_B[i, j - 1]) + \
+                            r2 * (-2 * self.current(self.lat_B, i + 1, j) + 3 * self.lat_B[i + 1, j]) + \
+                            r3 * (-2 * self.current(self.lat_B, i, j + 1) + 3 * self.lat_B[i, j + 1]) + \
+                            a * (2 * self.current(self.lat_B, i - 1, j) - 3 * self.lat_B[i - 1, j])
+                    x = scipy.optimize.root(self.opt_x, 1, args=(Zc, r1, r2, r3, theta))['x'][0]  # Finds the optimal x
+                    # New lat is defined to check the condition that the energy difference is actually positive
+                    new_lat = self.lat_B.copy()
+                    new_lat[i, j] -= 4 / 5 * Zc
+                    new_lat[i, j - 1] += 4 / 5 * r1 / (x + a) * Zc
+                    new_lat[i, j + 1] += 4 / 5 * r3 / (x + a) * Zc
+                    new_lat[i - 1, j] += 4 / 5 * x / (x + a) * Zc
+                    new_lat[i + 1, j] += 4 / 5 * r2 / (x + a) * Zc
+                    deltaE = self.e_total(new_lat) - self.e_total(self.lat_B)  # The energy difference
+                    if deltaE < 0:  # If there should be an avalanche
+                        self.lat_C[i, j] -= 4 / 5 * Zc  # Updates the avalanche lattice array
+                        self.lat_C[i, j - 1] += 4 / 5 * r1 / (x + a) * Zc
+                        self.lat_C[i, j + 1] += 4 / 5 * r3 / (x + a) * Zc
+                        self.lat_C[i - 1, j] += 4 / 5 * x / (x + a) * Zc
+                        self.lat_C[i + 1, j] += 4 / 5 * r2 / (x + a) * Zc
+                        self.avalanching = True  # Will be avalanching
 
         if not self.avalanching:
             epsilon = np.random.uniform(1e-7, 1e-5)  # uniform random increment
@@ -120,8 +123,8 @@ class Farhang:
 
 
 if __name__ == '__main__':
-    avalanche1 = Farhang(2, 6)
-    t_ = 1e6
-    avalanche1.loop(t_)#, save = '/home/hlamarre/PycharmProjects/Avalanches/Saves/N52_Farhang.npz',
-                    #load = '/home/hlamarre/PycharmProjects/Avalanches/Saves/N52_Farhang.npz')
+    avalanche1 = Farhang(2, 10)
+    t_ = 1e4
+    avalanche1.loop(t_, save = None,# '/home/hlamarre/PycharmProjects/Avalanches/Saves/N10_Farhang.npz',
+                    load = '/home/hlamarre/PycharmProjects/Avalanches/Saves/N10_Farhang.npz')
     Met.plot_energies(avalanche1.lattice_energy, avalanche1.released_energies, t_, 1)
