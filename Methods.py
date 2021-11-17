@@ -39,7 +39,7 @@ def plot_energies(el, er, t, e0):
     ax2 = plt.subplot(212, sharex=ax1)
     ax2.plot(np.arange(t), np.array(el)/e0)
     ax2.set_ylabel('el/e0')
-    # plt.savefig('energies.png')
+    plt.savefig('energies.png')
     plt.show()
 
 
@@ -106,6 +106,28 @@ def slope_stats(path_, plot=False):
     print('E = {}, P = {}, T = {}'.format(slope_E, slope_P, slope_T))
 
 
+def lattice_energy(path_):
+    e_l = np.load(path_)['e_l']
+    x_arr = np.linspace(min(e_l), max(e_l), 30)
+    hist = np.histogram(e_l, bins=x_arr, density=True)
+    plt.figure()
+    plt.scatter(np.log(x_arr[:-1]), np.log(hist[0]))
+    plt.xlabel('Lattice energy (log)')
+    plt.ylabel('P(E) (log)')
+    plt.show()
+
+def loglog_plot(path_, key, num):
+    quan = np.load(path_)[key]
+    print(quan)
+    x_arr = np.linspace(min(quan), max(quan), num)
+    hist = np.histogram(quan, bins=x_arr, density=True)
+    plt.figure()
+    plt.scatter(np.log(x_arr[:-1]), np.log(hist[0]))
+    plt.show()
+
+
 if __name__ == '__main__':
-    slope_stats('/home/hlamarre/PycharmProjects/Avalanches/Saves/N32_hex_stats.npz', plot=True)
-    slope_stats('/home/hlamarre/PycharmProjects/Avalanches/Saves/N32_stats.npz', plot=True)
+    # slope_stats('/home/hlamarre/PycharmProjects/Avalanches/Saves/N32_hex_stats.npz', plot=True)
+    # slope_stats('/home/hlamarre/PycharmProjects/Avalanches/Saves/N32_stats.npz', plot=True)
+    # lattice_energy('/home/hlamarre/PycharmProjects/Avalanches/Saves/N10_Farhang_stats.npz')
+    loglog_plot('/home/hlamarre/PycharmProjects/Avalanches/Saves/N10_Farhang_stats.npz', 'a_e', 30)
