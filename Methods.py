@@ -21,7 +21,7 @@ def make_movie(img):
     for i in range(len(img)):
         frames.append([plt.imshow(img[i])])
 
-    ani = animation.ArtistAnimation(fig, frames, interval=200, blit=True,
+    ani = animation.ArtistAnimation(fig, frames, interval=50, blit=True,
                                     repeat_delay=1000)
     ani.save('avalanche.mp4')
     # plt.show()
@@ -33,12 +33,12 @@ def plot_energies(el, er, t, e0):
     fig = plt.figure()
     ax1 = plt.subplot(211)
     ax1.plot(np.arange(t), np.array(er))
-    ax1.set_ylabel('er/e0')
+    ax1.set_ylabel('er')
 
     # share x only
     ax2 = plt.subplot(212, sharex=ax1)
     ax2.plot(np.arange(t), np.array(el)/e0)
-    ax2.set_ylabel('el/e0')
+    ax2.set_ylabel('el')
     plt.savefig('energies.png')
     plt.show()
 
@@ -130,4 +130,6 @@ if __name__ == '__main__':
     # slope_stats('/home/hlamarre/PycharmProjects/Avalanches/Saves/N32_hex_stats.npz', plot=True)
     # slope_stats('/home/hlamarre/PycharmProjects/Avalanches/Saves/N32_stats.npz', plot=True)
     # lattice_energy('/home/hlamarre/PycharmProjects/Avalanches/Saves/N10_Farhang_stats.npz')
-    loglog_plot('/home/hlamarre/PycharmProjects/Avalanches/Saves/N10_Farhang_stats.npz', 'a_e', 30)
+    # loglog_plot('/home/hlamarre/PycharmProjects/Avalanches/Saves/N10_Farhang_stats.npz', 'a_e', 30)
+    curvs = np.load('./Saves/N32_Farhang_curvs.npz')['curvs']
+    make_movie(curvs)

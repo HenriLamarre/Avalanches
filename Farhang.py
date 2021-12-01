@@ -7,6 +7,7 @@ import numpy as np
 import Methods as Met
 import time
 import scipy
+import copy
 import matplotlib.pyplot as plt
 
 
@@ -26,22 +27,14 @@ class Farhang:
         self.a_P = []  # Stores peak energy of avalanches
         self.a_T = []  # Stores time duration of avalanches
         self.a_E = []  # Stores total energy dissipated in avalanche
-        self.Zc = 0
-        self.r1 = 0
-        self.r2 = 0
-        self.r3 = 0
-        self.theta = 0
         self.last_time = 0
+        self.curvs = []
 
     def a_statistic_init(self, step_time):
         """Initializes the statistics of an avalanche
         P is the peak energy
         E is the total energy
         T is the time duration"""
-
-        # self.a_P.append([])  # New avalanche
-        # self.a_T.append([])
-        # self.a_E.append([])
 
         self.a_P.append(0)  # Initialize peak energy of avalanche
         self.a_E.append(0)  # Initialize total energy of avalanche
@@ -70,32 +63,31 @@ class Farhang:
     def opt_x(self, x, Zc, r1, r2, r3, theta):
         """ Function that defines x, the optimization parameter. Is used in root finding. """
         a = r1 + r2 + r3
-        return Zc * (r1**2 + r2**2 + r3**2 - a * x) -\
-               5 / 32 * a * theta / (5 / 32 * theta + a * Zc) - x
+        return (Zc * (r1**2 + r2**2 + r3**2 - a * x) - 5 / 32 * a * theta) / (5 / 32 * theta + a * Zc) - x
 
 
     def e_total(self, lattice):
         """ Returns the total energy of a specified lattice """
-        return np.sum(1/2*lattice[1:-1,1:-1]*(4*lattice[1:-1,1:-1] - lattice[1:-1,:-2]
-                                              - lattice[2:,1:-1] - lattice[1:-1,2:] - lattice[:-2,1:-1]))
+        return np.sum(1/2*np.multiply(lattice[1:-1, 1:-1],
+                                      4*lattice[1:-1, 1:-1] - lattice[1:-1, :-2] -
+                                      lattice[2:, 1:-1] - lattice[1:-1, 2:] - lattice[:-2, 1:-1]))
 
     def step(self, step_time):
+
         Zc = np.random.normal(1, 0.01)  # normal distribution of threshold
         e = 0  # default energy released
-        curv = np.zeros((self.N, self.N))
+        curv = np.zeros((self.N, self.N))  # curvature of the lattice initialization
         curv[1:-1, 1:-1] = self.lat_B[1:-1, 1:-1] - 1 / 4 * (self.lat_B[1:-1, 0:-2] + self.lat_B[1:-1, 2:] +
-                                                   self.lat_B[0:-2, 1:-1] + self.lat_B[2:, 1:-1])
+                            self.lat_B[0:-2, 1:-1] + self.lat_B[2:, 1:-1])  # curvature computation
 
-        prev_avalanching = bool(self.avalanching)
-        self.avalanching = False
-        # unst = np.flatnonzero(np.where(curv > Zc, 1, 0))
-        # if unst.size:
-        #     for k in unst:
-        #         i = k % self.N
-        #         j = k // self.N
-        for i in range(1, self.N - 1):
+        if step_time > 0:  # saves the curve matrix for plotting.
+            self.curvs.append(curv)
+
+        prev_avalanching = bool(self.avalanching)  # remembers if the last iteration was avalanche or not
+        self.avalanching = False  # defaults to false
+        for i in range(1, self.N - 1):  # loops over lattice to check if avalanche should occur
             for j in range(1, self.N - 1):
-                if curv[i][j] > Zc:
+                if curv[i][j] > Zc:  # condition to investigate optimization
                     [r1, r2, r3] = np.random.uniform(0, 1, size=(3, 1))  # Stochastic redistribution
                     a = r1 + r2 + r3
                     # Theta is used in finding x that minimizes lattice energy
@@ -103,15 +95,17 @@ class Farhang:
                             r2 * (-2 * self.current(self.lat_B, i + 1, j) + 3 * self.lat_B[i + 1, j]) + \
                             r3 * (-2 * self.current(self.lat_B, i, j + 1) + 3 * self.lat_B[i, j + 1]) + \
                             a * (2 * self.current(self.lat_B, i - 1, j) - 3 * self.lat_B[i - 1, j])
-                    x = scipy.optimize.root(self.opt_x, 1, args = (Zc, r1, r2, r3, theta))['x'][0]  # Finds the optimal x
+                    result = scipy.optimize.root(self.opt_x, 1, args=(Zc, r1, r2, r3, theta))
+                    x = result['x'][0]  # Finds the optimal x
                     # New lat is defined to check the condition that the energy difference is actually positive
-                    new_lat = self.lat_B.copy()
+                    new_lat = copy.deepcopy(self.lat_B)
                     new_lat[i, j] -= 4 / 5 * Zc
                     new_lat[i, j - 1] += 4 / 5 * r1 / (x + a) * Zc
                     new_lat[i, j + 1] += 4 / 5 * r3 / (x + a) * Zc
                     new_lat[i - 1, j] += 4 / 5 * x / (x + a) * Zc
                     new_lat[i + 1, j] += 4 / 5 * r2 / (x + a) * Zc
                     deltaE = self.e_total(new_lat) - self.e_total(self.lat_B)  # The energy difference
+                    print(deltaE)
                     if deltaE < 0:  # If there should be an avalanche
                         self.lat_C[i, j] -= 4 / 5 * Zc  # Updates the avalanche lattice array
                         self.lat_C[i, j - 1] += 4 / 5 * r1 / (x + a) * Zc
@@ -120,21 +114,29 @@ class Farhang:
                         self.lat_C[i + 1, j] += 4 / 5 * r2 / (x + a) * Zc
                         self.avalanching = True
 
+
+
         if not self.avalanching:
-            if prev_avalanching:
+            if prev_avalanching:  # stops the avalanche time duration
                 self.a_T[-1] = step_time - self.a_T[-1]  # Ending time of the avalanche
             epsilon = np.random.uniform(1e-7, 1e-5)  # uniform random increment
             self.lat_B *= (1+epsilon)  # Increase deterministically the lattice
 
         else:
-            if not prev_avalanching:
+            if not prev_avalanching:  # new avalanche, we have to initialize the energy dissipation and peak energy
                 self.a_statistic_init(step_time)
-            e = -self.e_total(self.lat_C) + self.e_total(self.lat_B)  # Energy released by avalanche
+            old_lattice = copy.deepcopy(self.lat_B)  # old lattice for energy computation
+            self.lat_B[1:-1, 1:-1] += self.lat_C[1:-1, 1:-1]  # Avalanches / Updates the lattice
+            e = self.e_total(old_lattice) - self.e_total(self.lat_B)  # Energy released by avalanche step
+            # if e<0:
+            #     plt.figure()
+            #     plt.imshow(self.lat_C)
+            #     plt.show()
             if self.a_P[-1] < e:  # update peak energy release
                 self.a_P[-1] = e
             self.a_E[-1] += e  # Update total energy release
-            self.lat_B[1:-1, 1:-1] += self.lat_C[1:-1, 1:-1]  # Avalanches / Updates the lattice
             self.lat_C = np.zeros((self.N, self.N))  # Resets the avalanche array
+
         # Updates the cumulative information
         self.released_energies.append(e)
         self.lattice_energy.append(self.e_total(self.lat_B))
@@ -149,20 +151,21 @@ class Farhang:
             if not i % int(total_time/100):  # Progress bar
                 print(str(int(i / total_time * 100)) + '%' + '  Time since last iteration: ' + str(round(time.time() - self.last_time, 2)) + 's')
                 self.last_time = time.time()
-                if save:
+                if save:  # saves the array periodically
                     np.savez(save + 'N{}_Farhang.npz'.format(self.N), lat_B=self.lat_B)
             self.step(i)
         if save:  # Save to numpy array for loading in other runs and statistics
             np.savez(save + 'N{}_Farhang.npz'.format(self.N), lat_B=self.lat_B)
             np.savez(save + 'N{}_Farhang_stats.npz'.format(self.N), e_l=avalanche1.lattice_energy,
                      e_r=avalanche1.released_energies, a_r=self.a_P, a_e=self.a_E, a_t=self.a_T)
+            np.savez(save + 'N{}_Farhang_curvs.npz'.format(self.N), curvs=self.curvs)
         end = time.time()
         print('loop took '+str(round(end - start, 2)) + 's')
 
 
 if __name__ == '__main__':
     avalanche1 = Farhang(2, 32)
-    t_ = 1e4
+    t_ = 1e3
     avalanche1.loop(t_, save =  '/home/hlamarre/PycharmProjects/Avalanches/Saves/',
                     load = '/home/hlamarre/PycharmProjects/Avalanches/Saves/')
     Met.plot_energies(avalanche1.lattice_energy, avalanche1.released_energies, t_, 1)
