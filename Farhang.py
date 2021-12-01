@@ -63,7 +63,7 @@ class Farhang:
     def opt_x(self, x, Zc, r1, r2, r3, theta):
         """ Function that defines x, the optimization parameter. Is used in root finding. """
         a = r1 + r2 + r3
-        return (Zc * (r1**2 + r2**2 + r3**2 - a * x) - 5 / 32 * a * theta) / (5 / 32 * theta + a * Zc) - x
+        return 6.4*Zc * (r1**2+r2**2+r3**2-a*x)/(x+a) - theta
 
 
     def e_total(self, lattice):
@@ -91,10 +91,10 @@ class Farhang:
                     [r1, r2, r3] = np.random.uniform(0, 1, size=(3, 1))  # Stochastic redistribution
                     a = r1 + r2 + r3
                     # Theta is used in finding x that minimizes lattice energy
-                    theta = r1 * (-2 * self.current(self.lat_B, i, j - 1) + 3 * self.lat_B[i, j - 1]) + \
-                            r2 * (-2 * self.current(self.lat_B, i + 1, j) + 3 * self.lat_B[i + 1, j]) + \
-                            r3 * (-2 * self.current(self.lat_B, i, j + 1) + 3 * self.lat_B[i, j + 1]) + \
-                            a * (2 * self.current(self.lat_B, i - 1, j) - 3 * self.lat_B[i - 1, j])
+                    theta = r1 * (-2 * self.current(self.lat_B, i, j - 1) - self.lat_B[i, i]) + r2 * (
+                                -2 * self.current(self.lat_B, i + 1, j) - self.lat_B[i, i]) + \
+                            r3 * (-2 * self.current(self.lat_B, i, j + 1) - self.lat_B[i, i]) - a * (
+                                        -2 * self.current(self.lat_B, i - 1, j) - self.lat_B[i, i])
                     result = scipy.optimize.root(self.opt_x, 1, args=(Zc, r1, r2, r3, theta))
                     x = result['x'][0]  # Finds the optimal x
                     # New lat is defined to check the condition that the energy difference is actually positive
@@ -105,7 +105,6 @@ class Farhang:
                     new_lat[i - 1, j] += 4 / 5 * x / (x + a) * Zc
                     new_lat[i + 1, j] += 4 / 5 * r2 / (x + a) * Zc
                     deltaE = self.e_total(new_lat) - self.e_total(self.lat_B)  # The energy difference
-                    print(deltaE)
                     if deltaE < 0:  # If there should be an avalanche
                         self.lat_C[i, j] -= 4 / 5 * Zc  # Updates the avalanche lattice array
                         self.lat_C[i, j - 1] += 4 / 5 * r1 / (x + a) * Zc
