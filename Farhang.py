@@ -40,8 +40,10 @@ class Farhang:
         self.a_E.append(0)  # Initialize total energy of avalanche
         self.a_T.append(step_time)  # beginning time of the avalanche
 
-    def current(self, lattice, i, j):
+    def current(self, lattice, pos):
         """ Computes the electric current J at a lattice point i,j """
+        i = pos[0]
+        j = pos[1]
         if i == 0:  # These conditions check if the point we are looking is near an edge
             a = 0
         else:
@@ -90,27 +92,30 @@ class Farhang:
                 if curv[i][j] > Zc:  # condition to investigate optimization
                     [r1, r2, r3] = np.random.uniform(0, 1, size=(3, 1))  # Stochastic redistribution
                     a = r1 + r2 + r3
+                    seq = np.array([[i,j+1], [i, j-1], [i-1, j], [i+1, j]])
+                    np.random.shuffle(seq) # random direction for isotropy
+
                     # Theta is used in finding x that minimizes lattice energy
-                    theta = r1 * (-2 * self.current(self.lat_B, i, j - 1) - self.lat_B[i, i]) + r2 * (
-                                -2 * self.current(self.lat_B, i + 1, j) - self.lat_B[i, i]) + \
-                            r3 * (-2 * self.current(self.lat_B, i, j + 1) - self.lat_B[i, i]) - a * (
-                                        -2 * self.current(self.lat_B, i - 1, j) - self.lat_B[i, i])
+                    theta = r1* (-2 * self.current(self.lat_B, seq[0]) - self.lat_B[i, j]) +\
+                            r2* (-2 * self.current(self.lat_B, seq[1]) - self.lat_B[i, j]) + \
+                            r3 * (-2 * self.current(self.lat_B, seq[2]) - self.lat_B[i, j]) -\
+                            a * (-2 * self.current(self.lat_B, seq[3]) - self.lat_B[i, j])
                     result = scipy.optimize.root(self.opt_x, 1, args=(Zc, r1, r2, r3, theta))
                     x = result['x'][0]  # Finds the optimal x
                     # New lat is defined to check the condition that the energy difference is actually positive
                     new_lat = copy.deepcopy(self.lat_B)
                     new_lat[i, j] -= 4 / 5 * Zc
-                    new_lat[i, j - 1] += 4 / 5 * r1 / (x + a) * Zc
-                    new_lat[i, j + 1] += 4 / 5 * r3 / (x + a) * Zc
-                    new_lat[i - 1, j] += 4 / 5 * x / (x + a) * Zc
-                    new_lat[i + 1, j] += 4 / 5 * r2 / (x + a) * Zc
+                    new_lat[seq[0][0], seq[0][1]] += 4 / 5 * r1 / (x + a) * Zc
+                    new_lat[seq[2][0], seq[2][1]] += 4 / 5 * r3 / (x + a) * Zc
+                    new_lat[seq[3][0], seq[3][1]] += 4 / 5 * x / (x + a) * Zc
+                    new_lat[seq[1][0], seq[1][1]] += 4 / 5 * r2 / (x + a) * Zc
                     deltaE = self.e_total(new_lat) - self.e_total(self.lat_B)  # The energy difference
                     if deltaE < 0:  # If there should be an avalanche
                         self.lat_C[i, j] -= 4 / 5 * Zc  # Updates the avalanche lattice array
-                        self.lat_C[i, j - 1] += 4 / 5 * r1 / (x + a) * Zc
-                        self.lat_C[i, j + 1] += 4 / 5 * r3 / (x + a) * Zc
-                        self.lat_C[i - 1, j] += 4 / 5 * x / (x + a) * Zc
-                        self.lat_C[i + 1, j] += 4 / 5 * r2 / (x + a) * Zc
+                        self.lat_C[seq[0][0], seq[0][1]] += 4 / 5 * r1/ (x + a) * Zc
+                        self.lat_C[seq[2][0], seq[2][1]] += 4 / 5 * r3 / (x + a) * Zc
+                        self.lat_C[seq[3][0], seq[3][1]] += 4 / 5 * x / (x + a) * Zc
+                        self.lat_C[seq[1][0], seq[1][1]] += 4 / 5 * r2 / (x + a) * Zc
                         self.avalanching = True
 
 
