@@ -131,5 +131,5 @@ if __name__ == '__main__':
     # slope_stats('/home/hlamarre/PycharmProjects/Avalanches/Saves/N32_stats.npz', plot=True)
     # lattice_energy('/home/hlamarre/PycharmProjects/Avalanches/Saves/N10_Farhang_stats.npz')
     # loglog_plot('/home/hlamarre/PycharmProjects/Avalanches/Saves/N10_Farhang_stats.npz', 'a_e', 30)
-    curvs = np.load('./Saves/N32_Farhang_curvs.npz')['curvs']
+    curvs = np.load('./Saves/N32_Farhang_curvs.npz')['curvs'][-100:]
     make_movie(curvs)

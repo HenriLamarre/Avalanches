@@ -112,7 +112,7 @@ class Farhang:
                     deltaE = self.e_total(new_lat) - self.e_total(self.lat_B)  # The energy difference
                     if deltaE < 0:  # If there should be an avalanche
                         self.lat_C[i, j] -= 4 / 5 * Zc  # Updates the avalanche lattice array
-                        self.lat_C[seq[0][0], seq[0][1]] += 4 / 5 * r1/ (x + a) * Zc
+                        self.lat_C[seq[0][0], seq[0][1]] += 4 / 5 * r1 / (x + a) * Zc
                         self.lat_C[seq[2][0], seq[2][1]] += 4 / 5 * r3 / (x + a) * Zc
                         self.lat_C[seq[3][0], seq[3][1]] += 4 / 5 * x / (x + a) * Zc
                         self.lat_C[seq[1][0], seq[1][1]] += 4 / 5 * r2 / (x + a) * Zc
@@ -162,7 +162,7 @@ class Farhang:
             np.savez(save + 'N{}_Farhang.npz'.format(self.N), lat_B=self.lat_B)
             np.savez(save + 'N{}_Farhang_stats.npz'.format(self.N), e_l=avalanche1.lattice_energy,
                      e_r=avalanche1.released_energies, a_r=self.a_P, a_e=self.a_E, a_t=self.a_T)
-            np.savez(save + 'N{}_Farhang_curvs.npz'.format(self.N), curvs=self.curvs)
+            # np.savez(save + 'N{}_Farhang_curvs.npz'.format(self.N), curvs=self.curvs)
         end = time.time()
         print('loop took '+str(round(end - start, 2)) + 's')
 
