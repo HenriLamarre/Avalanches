@@ -43,6 +43,8 @@ def plot_energies(el, er, t, e0):
     plt.show()
 
 
+
+
 def plot_statistics(E,P,T):
     """Plot the avalanche statistics"""
     fig = plt.figure()
