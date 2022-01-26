@@ -70,31 +70,40 @@ class Avalanche:
         curv = np.zeros((self.n, self.n))  # curvature of the lattice initialization
         curv[1:-1, 1:-1] = self.lat_B[1:-1, 1:-1] - 1 / 4 * (self.lat_B[1:-1, 0:-2] + self.lat_B[1:-1, 2:] +
                                                              self.lat_B[0:-2, 1:-1] + self.lat_B[2:, 1:-1])
-        hicounter = 0
+
         for i in range(self.n):
             for j in range(self.n):
                 if i == 0 or i ==self.n-1 or j == 0 or j == self.n-1:
                     pass
                 else:
                     if curv[i, j] > Zc:
-                        rs = np.random.uniform(0, 1, size=(3, 1))[:,0]
-                        r1 = rs[0]
-                        r2 = rs[1]
-                        r3 = rs[2]
-                        a = np.sum(rs)
-                        directions = np.array([[i-1, j], [i, j+1], [i+1, j], [i, j-1]])
-                        np.random.shuffle(directions)
-                        theta = -r1*self.current(self.lat_B, directions[0]) -\
-                                r2*self.current(self.lat_B, directions[1]) -\
-                                r1*self.current(self.lat_B, directions[2]) + a*self.current(self.lat_B, directions[3])
-                        x = (3.2*(r1**2+r2**2+r3**2)*Zc - a*theta)/(theta + 3.2*Zc*a)
-                        energy_calc_lattice = copy.deepcopy(self.lat_B)
-                        energy_calc_lattice[i, j] -= 4 / 5 * Zc
-                        energy_calc_lattice[directions[2][0], directions[2][1]] += 4 / 5 * Zc * rs[0] / (x+a)
-                        energy_calc_lattice[directions[1][0], directions[1][1]] += 4 / 5 * Zc * rs[1] / (x+a)
-                        energy_calc_lattice[directions[0][0], directions[0][1]] += 4 / 5 * Zc * rs[2] / (x+a)
-                        energy_calc_lattice[directions[3][0], directions[3][1]] += 4 / 5 * Zc * x / (x+a)
-                        new_energy_dissipated = -self.e_total(energy_calc_lattice)+self.e_total(self.lat_B)
+                        converged = 0
+                        while converged < 10:
+                            rs = np.random.uniform(0, 1, size=(3, 1))[:,0]
+                            r1 = rs[0]
+                            r2 = rs[1]
+                            r3 = rs[2]
+                            a = np.sum(rs)
+                            directions = np.array([[i - 1, j], [i, j + 1], [i + 1, j], [i, j - 1]])
+                            smallest_neighbour = np.argmin(
+                                [self.lat_B[i - 1, j], self.lat_B[i, j + 1], self.lat_B[i + 1, j], self.lat_B[i, j - 1]])
+                            directions = np.roll(directions, -smallest_neighbour, axis=0)
+                            np.random.shuffle(directions[0:3])
+                            theta = -r1*self.current(self.lat_B, directions[0]) -\
+                                    r2*self.current(self.lat_B, directions[1]) -\
+                                    r1*self.current(self.lat_B, directions[2]) + a*self.current(self.lat_B, directions[3])
+                            x = (3.2*(r1**2+r2**2+r3**2)*Zc - a*theta)/(theta + 3.2*Zc*a)
+                            energy_calc_lattice = copy.deepcopy(self.lat_B)
+                            energy_calc_lattice[i, j] -= 4 / 5 * Zc
+                            energy_calc_lattice[directions[2][0], directions[2][1]] += 4 / 5 * Zc * rs[0] / (x+a)
+                            energy_calc_lattice[directions[1][0], directions[1][1]] += 4 / 5 * Zc * rs[1] / (x+a)
+                            energy_calc_lattice[directions[0][0], directions[0][1]] += 4 / 5 * Zc * rs[2] / (x+a)
+                            energy_calc_lattice[directions[3][0], directions[3][1]] += 4 / 5 * Zc * x / (x+a)
+                            new_energy_dissipated = -self.e_total(energy_calc_lattice)+self.e_total(self.lat_B)
+                            if new_energy_dissipated > 0:
+                                converged = 10
+                            else:
+                                converged += 1
                         if new_energy_dissipated < 0:
                             pass
                         if new_energy_dissipated >= 0:
@@ -114,6 +123,7 @@ class Avalanche:
                 epsilon = 1e-5
                 self.lat_B *= (1 + epsilon)
                 energy_dissipated = 0
+                self.avalanching=False
                 print('energy negative')
 
 
