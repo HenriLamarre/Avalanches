@@ -77,14 +77,14 @@ class Avalanche:
             if energy_dissipated > 0:
                 self.lat_B += self.lat_C
             else:
-                epsilon = 10 ** np.random.uniform(-7, -5)
+                epsilon = 1e-5
                 self.lat_B *= (1 + epsilon)
                 energy_dissipated = 0
                 print('energy negative')
 
 
         else:
-            epsilon = 10**np.random.uniform(-7, -5)
+            epsilon = 1e-5
             self.lat_B *= (1+epsilon)
             energy_dissipated = 0
 
@@ -112,7 +112,7 @@ class Avalanche:
 
 if __name__ == '__main__':
     avalanche1 = Avalanche(2, 32)
-    t_ = 1e7
+    t_ = 1e6
     avalanche1.loop(t_, save =  '/home/hlamarre/PycharmProjects/Avalanches/Saves/',
                 load = '/home/hlamarre/PycharmProjects/Avalanches/Saves/')
     ax1 = plt.subplot(211)
@@ -123,4 +123,4 @@ if __name__ == '__main__':
     ax2.set_ylabel('el')
     plt.savefig('energies.png')
     plt.show()
-    np.savez('N{}_{}_data.npz'.format(avalanche1.n, avalanche1.name), el = avalanche1.energy_lat, er = avalanche1.energy_disp)
+    # np.savez('N{}_{}_data.npz'.format(avalanche1.n, avalanche1.name), el = avalanche1.energy_lat, er = avalanche1.energy_disp)
