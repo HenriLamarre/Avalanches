@@ -19,7 +19,7 @@ class Avalanche:
         self.n = n
         self.lat_B = np.zeros((self.n, self.n))
         self.lat_C = np.zeros((self.n, self.n))
-        self.name = 'Deterministic'
+        self.name = 'D01'
         self.avalanching = False
         self.Z_mean = 1
         self.Z_sigma = 0.01
@@ -27,6 +27,7 @@ class Avalanche:
         self.energy_lat = []
         self.last_time = time.time()
         self.lattice_history = []
+        self.altenergy = []
 
     def step(self, step_time):
         Zc = 1
@@ -45,36 +46,31 @@ class Avalanche:
                     pass
                 else:
                     if curv[i, j] > Zc:
-                        has_reached_positive_energy = True
-                        energy_dissipated = 0
-                        counter = 0
-                        while energy_dissipated <= 0:
-                            counter += 1
-                            if counter > 5:
-                                has_reached_positive_energy = False
-                                break
-                            rs = np.random.uniform(0, 1, (4,1))
-                            a = np.sum(rs)
-                            energy_calc_lattice = copy.deepcopy(self.lat_B)
-                            energy_calc_lattice[i, j] -= 4 / 5 * Zc
-                            energy_calc_lattice[i + 1, j] += 4 / 5 * Zc * rs[0] / a
-                            energy_calc_lattice[i-1, j] += 4 / 5 * Zc * rs[1] / a
-                            energy_calc_lattice[i, j+1] += 4 / 5 * Zc * rs[2] / a
-                            energy_calc_lattice[i, j-1] += 4 / 5 * Zc * rs[3] / a
-                            energy_dissipated = -np.sum(np.multiply(energy_calc_lattice, energy_calc_lattice)) +\
-                                                np.sum(np.multiply(self.lat_B, self.lat_B))
-                        if has_reached_positive_energy:
+                        rs = np.random.uniform(0.1, 1, (1,4))[0]
+
+                        energy_calc_lattice = copy.deepcopy(self.lat_B)
+                        energy_calc_lattice[i, j] -= 4 / 5 * Zc
+                        energy_calc_lattice[i + 1, j] += 1 / 5 * Zc * rs[0]
+                        energy_calc_lattice[i-1, j] += 1 / 5 * Zc * rs[1]
+                        energy_calc_lattice[i, j+1] += 1 / 5 * Zc * rs[2]
+                        energy_calc_lattice[i, j-1] += 1 / 5 * Zc * rs[3]
+                        energy_dissipated = -np.sum(np.multiply(energy_calc_lattice, energy_calc_lattice)) +\
+                                            np.sum(np.multiply(self.lat_B, self.lat_B))
+                        if energy_dissipated>0:
                             self.lat_C[i, j] -= 4/5*Zc
-                            self.lat_C[i+1, j] += 4 / 5 * Zc * rs[0] / a
-                            self.lat_C[i-1, j] += 4 / 5 * Zc * rs[1] / a
-                            self.lat_C[i, j+1] += 4 / 5 * Zc * rs[2] / a
-                            self.lat_C[i, j-1] += 4 / 5 * Zc * rs[3] / a
+                            self.lat_C[i+1, j] += 1 / 5 * Zc * rs[0]
+                            self.lat_C[i-1, j] += 1 / 5 * Zc * rs[1]
+                            self.lat_C[i, j+1] += 1 / 5 * Zc * rs[2]
+                            self.lat_C[i, j-1] += 1 / 5 * Zc * rs[3]
                             self.avalanching = True
+                        else:
+                            print('problem')
 
         if self.avalanching:
             old_lattice = copy.deepcopy(self.lat_B)
             energy_dissipated = -np.sum(np.multiply(self.lat_B + self.lat_C, self.lat_B + self.lat_C)) +\
                                 np.sum(np.multiply(old_lattice, old_lattice))
+            energy_alt = -self.e_total(self.lat_B + self.lat_C) + self.e_total(self.lat_B)
             if energy_dissipated > 0:
                 self.lat_B += self.lat_C
             else:
@@ -86,15 +82,16 @@ class Avalanche:
 
         else:
             epsilon = 1e-5
-            self.energy_disp.append(0)
             self.lat_B *= (1+epsilon)
             energy_dissipated = 0
+            energy_alt = 0
 
-        self.energy_disp[-1] += energy_dissipated
-        # self.energy_lat.append(np.sum(np.multiply(self.lat_B, self.lat_B)))
-        # self.lattice_history.append(self.lat_B)
+        self.energy_disp.append(energy_dissipated)
+        self.energy_lat.append(np.sum(np.multiply(self.lat_B, self.lat_B)))
+        self.altenergy.append(energy_alt)
+        self.lattice_history.append(self.lat_B)
 
-    def loop(self, total_time, save=False, load=False, progressbar = False):
+    def loop(self, total_time, save=False, load=False, progressbar=False, save_lattice=False):
         start = time.time()
         if load:  # Otherwise, if we have an initial array
             self.lat_B = np.load(load + 'N{}_{}.npz'.format(self.n, self.name))['lat_B']
@@ -112,13 +109,21 @@ class Avalanche:
         end = time.time()
         if progressbar:
             print('loop took '+str(round(end - start, 2)) + 's')
+        if save_lattice:
+            np.savez(save + 'N{}_{}_lattice_history.npz'.format(self.n, self.name), lat=self.lattice_history)
+
+    def e_total(self, lattice):
+        """ Returns the total energy of a specified lattice """
+        return np.sum(1/2*np.multiply(lattice[1:-1, 1:-1],
+                                      4*lattice[1:-1, 1:-1] - lattice[1:-1, :-2] -
+                                      lattice[2:, 1:-1] - lattice[1:-1, 2:] - lattice[:-2, 1:-1]))
 
 
 if __name__ == '__main__':
-    avalanche1 = Avalanche(2, 32)
+    avalanche1 = Avalanche(2, 48)
     t_ = 1e4
     avalanche1.loop(t_, save =  '/home/hlamarre/PycharmProjects/Avalanches/Saves/',
-                load = '/home/hlamarre/PycharmProjects/Avalanches/Saves/')
+                load = '/home/hlamarre/PycharmProjects/Avalanches/Saves/', progressbar=True, save_lattice=True)
     ax1 = plt.subplot(211)
     ax1.plot(avalanche1.energy_disp)
     ax1.set_ylabel('er')
@@ -128,4 +133,5 @@ if __name__ == '__main__':
     plt.savefig('energies.png')
     plt.show()
     #np.savez('Deterministic_lattice_history.npz', lat_history = avalanche1.lattice_history)
-    # np.savez('N{}_{}_data.npz'.format(avalanche1.n, avalanche1.name), el = avalanche1.energy_lat, er = avalanche1.energy_disp)
+    #np.savez('N{}_{}_data.npz'.format(avalanche1.n, avalanche1.name), el = avalanche1.energy_lat,
+             #er = avalanche1.energy_disp, ec = avalanche1.altenergy)

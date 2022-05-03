@@ -68,8 +68,9 @@ class Avalanche:
         self.lat_B[0] = 0
         self.lat_B[-1] = 0
         curv = np.zeros((self.n, self.n))  # curvature of the lattice initialization
-        curv[1:-1, 1:-1] = self.lat_B[1:-1, 1:-1] - 1 / 4 * (self.lat_B[1:-1, 0:-2] + self.lat_B[1:-1, 2:] +
-                                                             self.lat_B[0:-2, 1:-1] + self.lat_B[2:, 1:-1])
+        curv[1:-1, 1:-1] = self.lat_B[1:-1, 1:-1]-4/20*(self.lat_B[1:-1, 0:-2] + self.lat_B[1:-1, 2:] +\
+                                                        self.lat_B[0:-2, 1:-1] +self.lat_B[2:, 1:-1])-\
+                    1/20*(self.lat_B[0:-2, 2:] + self.lat_B[0:-2, 0:-2] + self.lat_B[2:, 2:]+ self.lat_B[2:, 0:-2])
 
         for i in range(self.n):
             for j in range(self.n):
@@ -104,15 +105,15 @@ class Avalanche:
                                 converged = 10
                             else:
                                 converged += 1
-                        if new_energy_dissipated < 0:
-                            pass
-                        if new_energy_dissipated >= 0:
-                            self.lat_C[i, j] -= 4 / 5 * Zc
-                            self.lat_C[directions[2][0], directions[2][1]] += 4 / 5 * Zc * rs[0] / (x + a)
-                            self.lat_C[directions[1][0], directions[1][1]] += 4 / 5 * Zc * rs[1] / (x + a)
-                            self.lat_C[directions[0][0], directions[0][1]] += 4 / 5 * Zc * rs[2] / (x + a)
-                            self.lat_C[directions[3][0], directions[3][1]] += 4 / 5 * Zc * x / (x + a)
-                            self.avalanching = True
+                        #if new_energy_dissipated < 0:
+                            #pass
+                        #if new_energy_dissipated >= 0:
+                        self.lat_C[i, j] -= 4 / 5 * Zc
+                        self.lat_C[directions[2][0], directions[2][1]] += 4 / 5 * Zc * rs[0] / (x + a)
+                        self.lat_C[directions[1][0], directions[1][1]] += 4 / 5 * Zc * rs[1] / (x + a)
+                        self.lat_C[directions[0][0], directions[0][1]] += 4 / 5 * Zc * rs[2] / (x + a)
+                        self.lat_C[directions[3][0], directions[3][1]] += 4 / 5 * Zc * x / (x + a)
+                        self.avalanching = True
 
         if self.avalanching:
             energy_dissipated = -self.e_total(self.lat_B + self.lat_C) + self.e_total(self.lat_B)
@@ -161,7 +162,7 @@ class Avalanche:
 
 if __name__ == '__main__':
     avalanche1 = Avalanche(2, 32)
-    t_ = 1e4
+    t_ = 1e5
     avalanche1.loop(t_, save =  '/home/hlamarre/PycharmProjects/Avalanches/Saves/',
                 load = '/home/hlamarre/PycharmProjects/Avalanches/Saves/', saving_lattice=False)
     ax1 = plt.subplot(211)
