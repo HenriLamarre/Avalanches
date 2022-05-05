@@ -159,12 +159,12 @@ subroutine do_avalanche_generic(Niter, &                 ! INPUT
                  r3 = r0
               endif
               C(i,j)   = C(i,j)   - two*D*increment/s
-              C(i+1,j) = C(i+1,j) + r0*increment/s 
+              C(i+1,j) = C(i+1,j) + r0*increment/s
               C(i-1,j) = C(i-1,j) + r1*increment/s
               C(i,j+1) = C(i,j+1) + r2*increment/s
               C(i,j-1) = C(i,j-1) + r3*increment/s
               energy_rel = (two*abs(Z(i,j))/Zc-one) - &
-                   (r_dnc-one)*D*increment*(B(i,j)-Z(i,j))/(Zc**2) - (r_dnc**2-one)/s 
+                   (r_dnc-one)*D*increment*(B(i,j)-Z(i,j))/(Zc**2) - (r_dnc**2-one)/s
               energy_rel2 = increment*( (four*D/s)*B(i,j) - &
                    (two/s)*(r0*B(i+1,j) + r1*B(i-1,j) +r2*B(i,j+1) + r3*B(i,j-1)) - &
                    ((four*(D**2)+r0**2+r1**2+r2**2+r3**2)/s**2)*increment )/e0
@@ -175,7 +175,7 @@ subroutine do_avalanche_generic(Niter, &                 ! INPUT
         enddo
      enddo
      if (verbose) write (*,*) "[DEB] e",energy,first_node
-     
+
      ! Do the avalanche or update lattice
      if (energy .ne. zero) then
         if (verbose) then
@@ -191,9 +191,9 @@ subroutine do_avalanche_generic(Niter, &                 ! INPUT
         lattice_energy(iter)  = sum(B*B)/e0
         !energy_released(iter) = energy
         energy_released(iter) = energy2
-        if (iter .eq. 1) then 
+        if (iter .eq. 1) then
            energy_released2(iter) = zero
-        else 
+        else
            energy_released2(iter) = lattice_energy(iter-1)-lattice_energy(iter)
         endif
         iter=iter+1
@@ -232,9 +232,9 @@ subroutine do_avalanche_generic(Niter, &                 ! INPUT
            lattice_energy(iter)  = sum(B*B)/e0
            energy_released(iter) = zero
            iter = iter + 1
-        else 
+        else
            ! Determinsitic forcing
-           if (sigma1 .eq. zero) then 
+           if (sigma1 .eq. zero) then
               ! accelerate iteration loop
               !niter_to_do = int(ceiling(log(Zc/maxval(abs(Z)))/log(one+eps_drive)))
               niter_to_do = int(log(Zc/maxval(abs(Z)))/log(one+eps_drive))+1
@@ -250,7 +250,7 @@ subroutine do_avalanche_generic(Niter, &                 ! INPUT
                  last_iter_oneiter = iter
               endif
               ! check if we do not do too many iterations
-              niter_to_do = min(niter_to_do,Niter-iter+1) 
+              niter_to_do = min(niter_to_do,Niter-iter+1)
               if (verbose) then
                  write (*,*) "Doing",niter_to_do,"iterations at once..."
                  write (*,*) "We are at iter=",iter,'and we want to do ',Niter,' iterations'
@@ -280,11 +280,11 @@ subroutine do_avalanche_generic(Niter, &                 ! INPUT
               enddo
               energy_released(iter)=zero
               lattice_energy(iter)=sum(B*B)/e0
-              iter=iter+1           
+              iter=iter+1
            endif
         endif
      endif
-     
+
   enddo
 
   Deallocate(C)
@@ -329,7 +329,7 @@ subroutine do_avalanche_generic_dp(Niter, &                 ! INPUT
      Nx,Ny,Binit,Zc,D_nc,eps_drive,sigma1,sigma2,lh_soc,idum_init,verbose,name, &     ! OPTIONAL
      lattice_energy,energy_released,energy_released2,B,Z,last_idum)         ! OUTPUTS
   use permutations
-  integer, parameter :: dp = selected_real_kind(15,307) ! double precision      
+  integer, parameter :: dp = selected_real_kind(15,307) ! double precision
   integer, parameter :: mp =dp
   Integer    :: Nx,Ny
 !f2py integer optional,intent(in) :: Nx=16
@@ -345,7 +345,7 @@ subroutine do_avalanche_generic_dp(Niter, &                 ! INPUT
   Real(mp) :: lh_soc
 !f2py real(mp) optional,intent(in) :: lh_soc=0.0
   Integer  :: idum_init
-!f2py integer optional, intent(in) :: idum_init = -67209495 
+!f2py integer optional, intent(in) :: idum_init = -67209495
   Real(mp) :: lattice_energy(Niter),energy_released(Niter),energy_released2(Niter)
 !f2py intent(out) lattice_energy
 !f2py intent(out) energy_released
@@ -393,6 +393,7 @@ subroutine do_avalanche_generic_dp(Niter, &                 ! INPUT
   Real(mp) :: theta, x, cur0, cur1, cur2, cur3, cur_temp  ! Farhang variables
   Real(mp) :: temp_lat(Nx, Ny)
   Integer :: unstable = 0
+  Real(mp) :: stats(1:2)
 
   last_iter_oneiter = -10
   c_rw = 0._mp ! initialize the random walk at zero
@@ -413,7 +414,7 @@ subroutine do_avalanche_generic_dp(Niter, &                 ! INPUT
   itrmax=100
   first_node = .true.
   first_node_rdist = .true.
-  
+
   ! For random numbers
   ! call init_random_seed()
   idum_run = idum_init
@@ -445,191 +446,332 @@ subroutine do_avalanche_generic_dp(Niter, &                 ! INPUT
 
   iter = 1
   ! Main Loop
+  stats(1) = zero
+  stats(2) = zero
   do while (iter .le. Niter)
-     energy =zero
-     energy2=zero
-     energy0=zero
-     first_node=.true.
-     first_node_rdist = .true.
-     ! Compute curvature
-     do i = 2,Nx-1
-        do j = 2,Ny-1
-           Z(i,j) = B(i,j) - (B(i+1,j)+B(i-1,j)+B(i,j+1)+B(i,j-1))/(two*D)
-           if (name(1:1) == 'F') then ! For the farhang models, we do not take the absolute value of the curvature
+      if (name(1:1) .eq. 'F') then
+          energy =zero
+         energy2=zero
+         energy0=zero
+         first_node= .true.
+         first_node_rdist = .true.
+          do i = 1,Nx
+               do j = 1,Ny
+                  C(i,j)=zero
+               enddo
+            enddo
+         ! Compute curvature
+         do i = 2,Nx-1
+            do j = 2,Ny-1
+               Z(i,j) = B(i,j) - (B(i+1,j)+B(i-1,j)+B(i,j+1)+B(i,j-1))/(two*D)
                ZZ = Z(i,j)
                increment = Zc
-           else if (lh_soc .ge. zero) then
-              ZZ = abs(Z(i,j))
-              increment = Zc*Z(i,j)/abs(Z(i,j))
-              !if (increment .lt. 0) write (*,*) B(i,j), B(i+1,j), B(i-1, j), B(i, j+1), B(i,j-1)
-           else
-              ZZ = abs(Z(i,j))
-              increment = (two*Zc-ZZ)*ran1(idum_run) + ZZ - Zc
-           endif
-           if ((sigma1 .gt. zero).and.(eps_drive .gt. zero)) then
-              Zc_loc = gauss_rand_dp(idum_run,Zc,sigma1/(two*sqrt(two*log(two))))
-           else
-              Zc_loc = Zc
-           endif
-           if (ZZ .ge. Zc_loc) then
-              if (first_node) then
-                 first_node = .false.
-              endif
-!!$              if (lh_soc .gt. zero) then
-!!$                 rrtmp = sqrt(2.)*sqrt(real(i-Nx/2)**2 + real(j-Ny/2)**2)/Nx
-!!$                 !dnc_loc = D_nc*(rrtmp**lh_soc)
-!!$                 dnc_loc = D_nc*(1.0-rrtmp**lh_soc)
-!!$              else
-!!$                 dnc_loc = D_nc
-!!$              endif
-              dnc_loc = D_nc
-
-              !if (sigma2 .gt. one) then
-              !   !r_dnc = weib_rand_dp(idum_run,dnc_loc,sigma2,-sigma1)
-              !   ! Determine the new D
-              !   b_th = 5._mp*(B(i+1,j)+B(i-1,j)+B(i,j+1)+B(i,j-1))/(2._mp*Zc)
-              !   d_th = b_th**2 - 4._mp*(5._mp*(two*abs(Z(i,j)/Zc)-one)*(sigma2-1._mp) - b_th - one)
-              !   if (d_th .le. zero) then
-              !      dnc_loc = zero
-              !   else
-              !      dnc_loc = max(zero,(-b_th+sqrt(d_th))/two)
-              !      !write (*,*) dnc_loc,(-b_th+sqrt(d_th))/two
-              !   endif
-              !   my_rand = ran1(idum_run)
-              !   max_dnc_loc = max(max_dnc_loc,dnc_loc)
-              !   !r_dnc = (one-dnc_loc)*my_rand + dnc_loc
-              !   r_dnc = (dnc_loc)*my_rand !+ dnc_loc
-              !   write (*,*) dnc_loc,5._mp*(Z(i,j))/Zc - 9._mp
-              !else
-                 my_rand = ran1(idum_run)
-                 if (lh_soc .gt. zero) then
-                    r_dnc = 2.0*lh_soc*my_rand + dnc_loc - lh_soc
-                 else
-                    r_dnc = (one-dnc_loc)*my_rand + dnc_loc
-                 endif
-                 !write (*,*) r_dnc
-              !endif
-
-              if (sigma2 .lt. zero) then
-                  if (name(1:1) == 'F') then
-                      !====Farhang model
-                      direction = ran1(idum_run)
-                      dir_number(1) = floor(direction*4) + 1 ! chooses a random direction for the optimization in x
+               Zc_loc = Zc
+               if (ZZ .ge. Zc_loc) then
+                  !====Farhang model
+                  direction = ran1(idum_run)
+                  dir_number(1) = floor(direction*4) + 1 ! chooses a random direction for the optimization in x
+                  do r = 2,4
+                      if (dir_number(r-1) .eq. 4) then ! the other directions follow
+                          dir_number(r) = 1
+                      else
+                          dir_number(r) = dir_number(r-1)+1
+                      end if
+                  end do
+                  dir = (/i,j, i+1, j, i-1, j, i,j+1, i,j-1/) ! list of the neighbour indexes
+                  r0 = ran1(idum_run) ! randomizes NEED TO CHANGE THIS FOR IDUM
+                  r1 = ran1(idum_run)
+                  r2 = ran1(idum_run)
+                  rr = (r0 + r1 + r2)
+                  call current(cur0, B, dir(dir_number(1)*2+1), dir(dir_number(1)*2+2), Nx, Ny)
+                  call current(cur1, B, dir(dir_number(2)*2+1), dir(dir_number(2)*2+2), Nx, Ny)
+                  call current(cur2, B, dir(dir_number(3)*2+1), dir(dir_number(3)*2+2), Nx, Ny)
+                  call current(cur3, B, dir(dir_number(4)*2+1), dir(dir_number(4)*2+2), Nx, Ny)
+                  theta = -r0*cur0 - r1*cur1 - r2*cur2 + rr*cur3 ! theta is used to find the optimal x
+                  x = ((three + two/ten)*(r0**2+r1**2+r2**2)*increment - rr*theta)/& !optimal x
+                      (theta + (three + two/ten)*increment*rr)
+                  if (name(2:2) == '0') then
+                     if (x .lt. zero) then ! if we dont care that x is negative, we have a switch here
+                         x = zero
+                     end if
+                  end if
+                  !====redistribution energy computation
+                  temp_lat = B! copy B in order to simulate the redistribution and choose if we want to do it
+                  temp_lat(i, j) = temp_lat(i, j) - two*D/s*increment ! The redistribution
+                  temp_lat(dir(dir_number(1)*2+1), dir(dir_number(1)*2+2)) =&
+                          temp_lat(dir(dir_number(1)*2+1), dir(dir_number(1)*2+2))+ two*D/s*r0/(x+rr)*increment
+                  temp_lat(dir(dir_number(2)*2+1), dir(dir_number(2)*2+2)) =&
+                          temp_lat(dir(dir_number(2)*2+1), dir(dir_number(2)*2+2))+two*D/s*r1/(x+rr)*increment
+                  temp_lat(dir(dir_number(3)*2+1), dir(dir_number(3)*2+2)) =&
+                          temp_lat(dir(dir_number(3)*2+1), dir(dir_number(3)*2+2))+two*D/s*r2/(x+rr)*increment
+                  temp_lat(dir(dir_number(4)*2+1), dir(dir_number(4)*2+2)) =&
+                          temp_lat(dir(dir_number(4)*2+1), dir(dir_number(4)*2+2))+two*D/s*x/(x+rr)*increment
+                  !====loop to compute the energy of the redistribution
+                  energy_rel2 = zero
+                  do l=1,5
+                      do r=1,5
+                          if (i+l-3 .ge. 1) then
+                              if (i+l-3 .le. Nx) then
+                                  if (j+r-3 .ge. 1) then
+                                      if (j+r-3 .le. Nx) then
+                                          call current(cur_temp, B, i+l-3, j+r-3, Nx, Ny)
+                                          energy_rel2 = energy_rel2 + B(i+l-3, j+r-3)*cur_temp/two
+                                          call current(cur_temp, temp_lat, i+l-3, j+r-3, Nx, Ny)
+                                          energy_rel2 = energy_rel2 - temp_lat(i+l-3, j+r-3)*cur_temp/two
+                                      end if
+                                  end if
+                              end if
+                          end if
+                      end do
+                  end do
+                  itran=0
+                  !==== if energy is locally negative, we reconfigure 10 times at most to try and make it
+                  do while ((energy_rel2 .lt. zero).and.(itran .lt. 10))
+                      if (itran .ge. 9) then
+                         if (verbose) then
+                             write (*,*) 'exceeded 10 attempts'
+                         end if
+                      end if
+                      itran = itran+1
+                      call random_number(direction)
+                      dir_number(1) = floor(direction*4) + 1
                       do r = 2,4
-                          if (dir_number(r-1) .eq. 4) then ! the other directions follow
+                          if (dir_number(r-1) .eq. 4) then
                               dir_number(r) = 1
                           else
                               dir_number(r) = dir_number(r-1)+1
                           end if
                       end do
-                      dir = (/i,j, i+1, j, i-1, j, i,j+1, i,j-1/) ! list of the neighbour indexes
-                     r0 = ran1(idum_run) ! randomizes NEED TO CHANGE THIS FOR IDUM
-                     r1 = ran1(idum_run)
-                     r2 = ran1(idum_run)
-                     rr = (r0 + r1 + r2)
+                      call random_number(r0)
+                      call random_number(r1)
+                      call random_number(r2)
+                      !write(*,*) r0, r1, r2
+                      rr = (r0 + r1 + r2)
                       call current(cur0, B, dir(dir_number(1)*2+1), dir(dir_number(1)*2+2), Nx, Ny)
                       call current(cur1, B, dir(dir_number(2)*2+1), dir(dir_number(2)*2+2), Nx, Ny)
                       call current(cur2, B, dir(dir_number(3)*2+1), dir(dir_number(3)*2+2), Nx, Ny)
                       call current(cur3, B, dir(dir_number(4)*2+1), dir(dir_number(4)*2+2), Nx, Ny)
-                     theta = -r0*cur0 - r1*cur1 - r2*cur2 + rr*cur3 ! theta is used to find the optimal x
-                     x = ((three + two/ten)*(r0**2+r1**2+r2**2)*increment - rr*theta)/& !optimal x
-                          (theta + (three + two/ten)*increment*rr)
-                     if (name(2:2) == '0') then
-                        if (x .lt. zero) then ! if we dont care that x is negative, we have a switch here
-                            x = zero
-                        end if
-                     end if
-                      !====redistribution energy computation
-                      temp_lat = B! copy B in order to simulate the redistribution and choose if we want to do it
-                      temp_lat(i, j) = temp_lat(i, j) - two*D/s*increment ! The redistribution
-                      temp_lat(dir(dir_number(1)*2+1), dir(dir_number(1)*2+2)) =&
-                              temp_lat(dir(dir_number(1)*2+1), dir(dir_number(1)*2+2))+ two*D/s*r0/(x+rr)*increment
-                      temp_lat(dir(dir_number(2)*2+1), dir(dir_number(2)*2+2)) =&
-                              temp_lat(dir(dir_number(2)*2+1), dir(dir_number(2)*2+2))+two*D/s*r1/(x+rr)*increment
-                      temp_lat(dir(dir_number(3)*2+1), dir(dir_number(3)*2+2)) =&
-                              temp_lat(dir(dir_number(3)*2+1), dir(dir_number(3)*2+2))+two*D/s*r2/(x+rr)*increment
-                      temp_lat(dir(dir_number(4)*2+1), dir(dir_number(4)*2+2)) =&
-                              temp_lat(dir(dir_number(4)*2+1), dir(dir_number(4)*2+2))+two*D/s*x/(x+rr)*increment
-                      !====loop to compute the energy of the redistribution
-                      call current(cur_temp, B, i, j, Nx, Ny)
-                      energy_rel2 = B(i, j)*cur_temp/two
-                      call current(cur_temp, temp_lat, i, j, Nx, Ny)
-                      energy_rel2 = energy_rel2 - temp_lat(i, j)*cur_temp/two
-                      do l=1,4
-                          call current(cur_temp, B, dir(dir_number(l)*2+1), dir(dir_number(l)*2+2), Nx, Ny)
-                          energy_rel2 = energy_rel2 +&
-                                B(dir(dir_number(l)*2+1), dir(dir_number(l)*2+2))*cur_temp/two
-                      call current(cur_temp, temp_lat, dir(dir_number(l)*2+1), &
-                                                            dir(dir_number(l)*2+2), Nx, Ny)
-                      energy_rel2 = energy_rel2 -&
-                                    temp_lat(dir(dir_number(l)*2+1), dir(dir_number(l)*2+2))*cur_temp/two
-                      end do
-                      itran=0
-                      !==== if energy is locally negative, we reconfigure 10 times at most to try and make it
-                     do while ((energy_rel2 .lt. zero).and.(itran .lt. 10))
-                         if (itran .ge. 9) then
-                             if (verbose) then
-                                 write (*,*) 'exceeded 10 attempts'
-                             end if
-                         end if
-                        itran = itran+1
-                        call random_number(direction)
-                        dir_number(1) = floor(direction*4) + 1
-                        do r = 2,4
-                            if (dir_number(r-1) .eq. 4) then
-                                dir_number(r) = 1
-                            else
-                                dir_number(r) = dir_number(r-1)+1
-                            end if
-                        end do
-                        call random_number(r0)
-                        call random_number(r1)
-                        call random_number(r2)
-                         !write(*,*) r0, r1, r2
-                        rr = (r0 + r1 + r2)
-                        call current(cur0, B, dir(dir_number(1)*2+1), dir(dir_number(1)*2+2), Nx, Ny)
-                        call current(cur1, B, dir(dir_number(2)*2+1), dir(dir_number(2)*2+2), Nx, Ny)
-                        call current(cur2, B, dir(dir_number(3)*2+1), dir(dir_number(3)*2+2), Nx, Ny)
-                        call current(cur3, B, dir(dir_number(4)*2+1), dir(dir_number(4)*2+2), Nx, Ny)
-                        theta = -r0*cur0 - r1*cur1 - r2*cur2 + rr*cur3
-                        x = ((three+two/ten)*(r1**2+r2**2+r3**2)*Zc - rr*theta)/(theta + (three+two/ten)*Zc*rr)
-                        if (name(2:2) == '0') then
-                            if (x .lt. zero) then ! if we dont care that x is negative, we have a switch here
+                      theta = -r0*cur0 - r1*cur1 - r2*cur2 + rr*cur3
+                      x = ((three+two/ten)*(r1**2+r2**2+r3**2)*Zc - rr*theta)/(theta + (three+two/ten)*Zc*rr)
+                      if (name(2:2) == '0') then
+                          if (x .lt. zero) then ! if we dont care that x is negative, we have a switch here
                                 x = zero
-                            end if
-                        end if
-                        temp_lat = B
-                        temp_lat(dir(1), dir(2)) = temp_lat(dir(1), dir(2))- two*D/s*increment
-                        temp_lat(dir(dir_number(1)*2+1), dir(dir_number(1)*2+2)) =&
-                        temp_lat(dir(dir_number(1)*2+1), dir(dir_number(1)*2+2))+ two*D/s*r0/(x+rr)*increment
-                        temp_lat(dir(dir_number(2)*2+1), dir(dir_number(2)*2+2)) =&
-                        temp_lat(dir(dir_number(2)*2+1), dir(dir_number(2)*2+2))+two*D/s*r1/(x+rr)*increment
-                        temp_lat(dir(dir_number(3)*2+1), dir(dir_number(3)*2+2)) =&
-                        temp_lat(dir(dir_number(3)*2+1), dir(dir_number(3)*2+2))+two*D/s*r2/(x+rr)*increment
-                        temp_lat(dir(dir_number(4)*2+1), dir(dir_number(4)*2+2)) =&
-                        temp_lat(dir(dir_number(4)*2+1), dir(dir_number(4)*2+2))+two*D/s*x/(x+rr)*increment
-                        call current(cur_temp, B, i, j, Nx, Ny)
-                        energy_rel2 = B(i, j)*cur_temp/two
-                        call current(cur_temp, temp_lat, i, j, Nx, Ny)
-                        energy_rel2 = energy_rel2 - temp_lat(i, j)*cur_temp/two
-                        do l=1,4
-                            call current(cur_temp, B, dir(dir_number(l)*2+1), dir(dir_number(l)*2+2), Nx, Ny)
-                            energy_rel2 = energy_rel2 +&
-                                        B(dir(dir_number(l)*2+1), dir(dir_number(l)*2+2))*cur_temp/two
-                            call current(cur_temp, temp_lat, dir(dir_number(l)*2+1), &
-                                                                    dir(dir_number(l)*2+2), Nx, Ny)
-                            energy_rel2 = energy_rel2 -&
-                                            temp_lat(dir(dir_number(l)*2+1), dir(dir_number(l)*2+2))*cur_temp/two
-                        end do
-                     end do
-
-                     if (energy_rel2 .lt. zero) then ! If local energy is smaller than 0 after the 20 tries
-                         if (verbose) then
-                             write (*,*) 'OUCH... some negative energy detected...'
-                         end if
-                         unstable = 1 ! We choose if we want to redistribute. 1 means that we dont want to
+                          end if
                       end if
+                      temp_lat = B
+                      temp_lat(dir(1), dir(2)) = temp_lat(dir(1), dir(2))- two*D/s*increment
+                      temp_lat(dir(dir_number(1)*2+1), dir(dir_number(1)*2+2)) =&
+                                temp_lat(dir(dir_number(1)*2+1), dir(dir_number(1)*2+2))+ two*D/s*r0/(x+rr)*increment
+                      temp_lat(dir(dir_number(2)*2+1), dir(dir_number(2)*2+2)) =&
+                                temp_lat(dir(dir_number(2)*2+1), dir(dir_number(2)*2+2))+two*D/s*r1/(x+rr)*increment
+                      temp_lat(dir(dir_number(3)*2+1), dir(dir_number(3)*2+2)) =&
+                            temp_lat(dir(dir_number(3)*2+1), dir(dir_number(3)*2+2))+two*D/s*r2/(x+rr)*increment
+                      temp_lat(dir(dir_number(4)*2+1), dir(dir_number(4)*2+2)) =&
+                            temp_lat(dir(dir_number(4)*2+1), dir(dir_number(4)*2+2))+two*D/s*x/(x+rr)*increment
+                      energy_rel2 = zero
+                      do l=1,5
+                          do r=1,5
+                              if (i+l-3 .ge. 1) then
+                                  if (i+l-3 .le. Nx) then
+                                      if (j+r-3 .ge. 1) then
+                                          if (j+r-3 .le. Nx) then
+                                              call current(cur_temp, B, i+l-3, j+r-3, Nx, Ny)
+                                              energy_rel2 = energy_rel2 + B(i+l-3, j+r-3)*cur_temp/two
+                                              call current(cur_temp, temp_lat, i+l-3, j+r-3, Nx, Ny)
+                                              energy_rel2 = energy_rel2 - temp_lat(i+l-3, j+r-3)*cur_temp/two
+                                          end if
+                                      end if
+                                  end if
+                              end if
+                          end do
+                      end do
+                  end do
+                  if (energy_rel2 .lt. zero) then ! If local energy is smaller than 0 after the 20 tries
+                     if (verbose) then
+                         write (*,*) 'OUCH... some negative energy detected...'
+                     end if
+                     unstable = 1 ! We choose if we want to redistribute. 1 means that we dont want to
+                  end if
+                  if (unstable .eq. 0) then ! Farhang redistribution
+                      C(i,j)   = C(i,j)   - two*D/s*increment
+                      C(dir(dir_number(1)*2+1),dir(dir_number(1)*2+2)) = &
+                        C(dir(dir_number(1)*2+1),dir(dir_number(1)*2+2)) + two*D/s*r0/(x+rr)*increment
+                      C(dir(dir_number(2)*2+1),dir(dir_number(2)*2+2)) = &
+                        C(dir(dir_number(2)*2+1),dir(dir_number(2)*2+2)) + two*D/s*r1/(x+rr)*increment
+                      C(dir(dir_number(3)*2+1),dir(dir_number(3)*2+2)) = &
+                        C(dir(dir_number(3)*2+1),dir(dir_number(3)*2+2)) + two*D/s*r2/(x+rr)*increment
+                      C(dir(dir_number(4)*2+1),dir(dir_number(4)*2+2)) = &
+                        C(dir(dir_number(4)*2+1),dir(dir_number(4)*2+2)) + two*D/s*x/(x+rr)*increment
                   else
+                      unstable = 0 ! Resets unstable for future iterations
+                  end if
+               endif
+            enddo
+         enddo
+    !     if (energy2 .lt. zero) then ! This is for the model where we let unstable = 0 but only avalanche when
+    !         energy = zero ! the energy of the avalanche is positive
+    !     end if
+          do i = 1,Nx
+               do j = 1,Ny
+                  temp_lat(i,j) = B(i,j) + C(i,j)
+               enddo
+          enddo
+          energy2 = zero
+          do i = 2,Nx-1
+               do j = 2,Ny-1
+                  call current(cur_temp, B, i, j, Nx, Ny)
+                  energy2 = energy2 + B(i,j)*cur_temp/two
+                  call current(cur_temp, temp_lat, i, j, Nx, Ny)
+                  energy2 = energy2 - temp_lat(i,j)*cur_temp/two
+               enddo
+          enddo
+          if (energy2 .lt. zero) then
+            stats(1) = stats(1) + one
+              end if
+          stats(2) = stats(2) + one
+          write (*,*) stats(1)/stats(2)
+         ! Do the avalanche or update lattice
+         if (energy2 .gt. zero) then
+            if (verbose) then
+               Write (*,*) "--> Avalanching on it",iter," (with e=",energy,")"
+            endif
+            do i = 2,Nx-1
+               do j = 2,Ny-1
+                  B(i,j) = B(i,j) + C(i,j)
+               enddo
+            enddo
+            lattice_energy(iter) = 0
+            do i = 2,Nx-1
+               do j = 2,Ny-1
+                  call current(cur_temp, B, i, j, Nx, Ny)
+                  lattice_energy(iter) = lattice_energy(iter) + B(i,j)*cur_temp/two
+               enddo
+            enddo
+            energy_released(iter) = energy2
+            if (iter .eq. 1) then
+               energy_released2(iter) = zero
+            else
+               energy_released2(iter) = lattice_energy(iter-1)-lattice_energy(iter)
+            endif
+
+            iter=iter+1
+         else
+              niter_to_do = int(log(Zc/maxval(abs(Z)))/log(one+eps_drive))+1
+!              write (*,*) niter_to_do
+              if (verbose) then
+                 write (*,*) '[DEBUG]: ',log(Zc/maxval(abs(Z))),log(one+eps_drive),log(Zc/maxval(abs(Z)))/log(one+eps_drive)
+                 write (*,*) '[DEBUG]: ',Zc,maxval(abs(Z)),niter_to_do
+              endif
+              if (niter_to_do .eq. 0) niter_to_do = 1 ! just a sanity check
+              if (niter_to_do .lt. 0) then
+                  niter_to_do = 1
+!                  cur_temp = 0 ! so we use the biggest curv under Zc to drive
+!                  do i = 2,Nx-1
+!                      do j = 2,Ny-1
+!                          if (Z(i,j) .lt. Zc) then
+!                              if (Z(i,j) .gt. cur_temp) then
+!                                  cur_temp = Z(i,j)
+!                              end if
+!                          end if
+!                      enddo
+!                  enddo
+!
+!                  niter_to_do = int(log(Zc/cur_temp)/log(one+eps_drive))+2
+!                  if (niter_to_do > 100) then
+!                      niter_to_do = 10
+!                  end if
+              end if
+              niter_to_do = min(niter_to_do,Niter-iter+1)
+              if (verbose) then
+                 write (*,*) "Doing",niter_to_do,"iterations at once..."
+                 write (*,*) "We are at iter=",iter,'and we want to do ',Niter,' iterations'
+                 write (*,*) "It will bring to ",iter+niter_to_do-1,"its in total."
+                 write (*,*) '[DEBUG]: ',log(Zc/maxval(abs(Z))),log(one+eps_drive)
+                 write (*,*) '[DEBUG]: ',Zc,maxval(abs(Z))
+              endif
+              lattice_energy(iter) = 0
+              do i = 2,Nx-1
+                  do j = 2,Ny-1
+                      call current(cur_temp, B, i, j, Nx, Ny)
+                      lattice_energy(iter) = lattice_energy(iter) + B(i,j)*cur_temp/two
+                  enddo
+              enddo
+              lattice_energy(iter) = lattice_energy(iter)*(one+eps_drive)**2
+              if (niter_to_do .gt. 1) then
+                 do iter_tmp = iter+1,iter+niter_to_do-1
+                    lattice_energy(iter_tmp)  = lattice_energy(iter)*((one+eps_drive)**(2*(iter_tmp-iter)))
+                 enddo
+              endif
+              do i = 2,Nx-1
+                 do j = 2,Ny-1
+                    B(i,j) = B(i,j)*((one+eps_drive)**niter_to_do)
+                 enddo
+              enddo
+              energy_released(iter:iter+niter_to_do-1) = zero
+              iter=iter+niter_to_do
+         end if
+      else
+          energy =zero
+         energy2=zero
+         energy0=zero
+         first_node=.true.
+         first_node_rdist = .true.
+         ! Compute curvature
+         do i = 2,Nx-1
+            do j = 2,Ny-1
+               Z(i,j) = B(i,j) - (B(i+1,j)+B(i-1,j)+B(i,j+1)+B(i,j-1))/(two*D)
+               if (lh_soc .ge. zero) then
+                  ZZ = abs(Z(i,j))
+                  increment = Zc*Z(i,j)/abs(Z(i,j))
+               else
+                  ZZ = abs(Z(i,j))
+                  increment = (two*Zc-ZZ)*ran1(idum_run) + ZZ - Zc
+               endif
+               if ((sigma1 .gt. zero).and.(eps_drive .gt. zero)) then
+                  Zc_loc = gauss_rand_dp(idum_run,Zc,sigma1/(two*sqrt(two*log(two))))
+               else
+                  Zc_loc = Zc
+               endif
+               if (ZZ .ge. Zc_loc) then
+                  if (first_node) then
+                     first_node = .false.
+                  endif
+    !!$              if (lh_soc .gt. zero) then
+    !!$                 rrtmp = sqrt(2.)*sqrt(real(i-Nx/2)**2 + real(j-Ny/2)**2)/Nx
+    !!$                 !dnc_loc = D_nc*(rrtmp**lh_soc)
+    !!$                 dnc_loc = D_nc*(1.0-rrtmp**lh_soc)
+    !!$              else
+    !!$                 dnc_loc = D_nc
+    !!$              endif
+                  dnc_loc = D_nc
+
+                  !if (sigma2 .gt. one) then
+                  !   !r_dnc = weib_rand_dp(idum_run,dnc_loc,sigma2,-sigma1)
+                  !   ! Determine the new D
+                  !   b_th = 5._mp*(B(i+1,j)+B(i-1,j)+B(i,j+1)+B(i,j-1))/(2._mp*Zc)
+                  !   d_th = b_th**2 - 4._mp*(5._mp*(two*abs(Z(i,j)/Zc)-one)*(sigma2-1._mp) - b_th - one)
+                  !   if (d_th .le. zero) then
+                  !      dnc_loc = zero
+                  !   else
+                  !      dnc_loc = max(zero,(-b_th+sqrt(d_th))/two)
+                  !      !write (*,*) dnc_loc,(-b_th+sqrt(d_th))/two
+                  !   endif
+                  !   my_rand = ran1(idum_run)
+                  !   max_dnc_loc = max(max_dnc_loc,dnc_loc)
+                  !   !r_dnc = (one-dnc_loc)*my_rand + dnc_loc
+                  !   r_dnc = (dnc_loc)*my_rand !+ dnc_loc
+                  !   write (*,*) dnc_loc,5._mp*(Z(i,j))/Zc - 9._mp
+                  !else
+                     my_rand = ran1(idum_run)
+                     if (lh_soc .gt. zero) then
+                        r_dnc = 2.0*lh_soc*my_rand + dnc_loc - lh_soc
+                     else
+                        r_dnc = (one-dnc_loc)*my_rand + dnc_loc
+                     endif
+                     !write (*,*) r_dnc
+                  !endif
+
+                  if (sigma2 .lt. zero) then
                      r0 = ran1(idum_run)
                      r1 = ran1(idum_run)
                      r2 = ran1(idum_run)
@@ -660,267 +802,229 @@ subroutine do_avalanche_generic_dp(Niter, &                 ! INPUT
                         r2 = r2_tmp
                         r3 = r3_tmp
                      endif
-                  end if
-              else
-                 r0 = r_dnc
-                 r1 = r0
-                 r2 = r0
-                 r3 = r0
-                 !ra = 1.0
-              endif
+                  else
+                     r0 = r_dnc
+                     r1 = r0
+                     r2 = r0
+                     r3 = r0
+                     !ra = 1.0
+                  endif
 
-              if (name(1:1) /= 'F') then ! in Farhang, sometimes we compute redistribution but no avalanches
                   energy_rel0 = (two*abs(Z(i,j))/Zc-one)
+
                   energy_rel = (two*abs(Z(i,j))/Zc-one) - &
                        (r_dnc-one)*D*increment*(B(i,j)-Z(i,j))/(Zc**2) - (r_dnc**2-one)/s
-              end if
-              if (sigma2 .gt. zero) then
-                 energy_rel2 = increment*( (four*r0*D/s)*B(i,j) - &
-                      (two/s)*(B(i+1,j) + B(i-1,j) + B(i,j+1) + B(i,j-1)) - &
-                      ((four*((r0*D)**2)+four)/s**2)*increment )/e0
-              else
-                  if (name(1:1) /= 'F') then
-                      energy_rel2 = increment*( (four*D/s)*B(i,j) - &
-                      (two/s)*(r0*B(i+1,j) + r1*B(i-1,j) +r2*B(i,j+1) + r3*B(i,j-1)) - &
-                      ((four*(D**2)+r0**2+r1**2+r2**2+r3**2)/s**2)*increment )/e0
-                  end if
-              endif
+                  if (sigma2 .gt. zero) then
+                     energy_rel2 = increment*( (four*r0*D/s)*B(i,j) - &
+                          (two/s)*(B(i+1,j) + B(i-1,j) + B(i,j+1) + B(i,j-1)) - &
+                          ((four*((r0*D)**2)+four)/s**2)*increment )/e0
+                  else
+                     energy_rel2 = increment*( (four*D/s)*B(i,j) - &
+                          (two/s)*(r0*B(i+1,j) + r1*B(i-1,j) +r2*B(i,j+1) + r3*B(i,j-1)) - &
+                          ((four*(D**2)+r0**2+r1**2+r2**2+r3**2)/s**2)*increment )/e0
+                  endif
 
-              if (sigma2 .gt. zero) then
-                 C(i,j)   = C(i,j)   - two*D*r0*increment/s
-                 C(i+1,j) = C(i+1,j) + increment/s 
-                 C(i-1,j) = C(i-1,j) + increment/s
-                 C(i,j+1) = C(i,j+1) + increment/s
-                 C(i,j-1) = C(i,j-1) + increment/s
-              else
-                  if (name(1:1)=='F') then
-                      if (unstable .eq. 0) then ! Farhang redistribution
-                          C(i,j)   = C(i,j)   - two*D/s*increment
-                          C(dir(dir_number(1)*2+1),dir(dir_number(1)*2+2)) = &
-                          C(dir(dir_number(1)*2+1),dir(dir_number(1)*2+2)) + two*D/s*r0/(x+rr)*increment
-                          C(dir(dir_number(2)*2+1),dir(dir_number(2)*2+2)) = &
-                          C(dir(dir_number(2)*2+1),dir(dir_number(2)*2+2)) + two*D/s*r1/(x+rr)*increment
-                          C(dir(dir_number(3)*2+1),dir(dir_number(3)*2+2)) = &
-                          C(dir(dir_number(3)*2+1),dir(dir_number(3)*2+2)) + two*D/s*r2/(x+rr)*increment
-                          C(dir(dir_number(4)*2+1),dir(dir_number(4)*2+2)) = &
-                          C(dir(dir_number(4)*2+1),dir(dir_number(4)*2+2)) + two*D/s*x/(x+rr)*increment
-                      end if
+    !!$              e_LH = two*abs(Z(i,j))/Zc-one
+    !!$              !write (*,*) energy_rel2,e_LH
+    !!$              do while (energy_rel2 .ge. 100*e_LH)
+    !!$                 ! try to find another one
+    !!$                 if (sigma2 .gt. zero) then
+    !!$                    r_dnc = weib_rand_dp(idum_run,dnc_loc,sigma2,-sigma1)
+    !!$                 else
+    !!$                    my_rand = ran1(idum_run)
+    !!$                    if (lh_soc .gt. zero) then
+    !!$                       r_dnc = 2.0*lh_soc*my_rand + dnc_loc - lh_soc
+    !!$                    else
+    !!$                       r_dnc = (one-dnc_loc)*my_rand + dnc_loc
+    !!$                    endif
+    !!$                    r0 = r_dnc
+    !!$                    r1 = r0
+    !!$                    r2 = r0
+    !!$                    r3 = r0
+    !!$                 endif
+    !!$                 energy_rel2 = increment*( (four*D/s)*B(i,j) - &
+    !!$                      (two/s)*(r0*B(i+1,j) + r1*B(i-1,j) +r2*B(i,j+1) + r3*B(i,j-1)) - &
+    !!$                      ((four*(D**2)+r0**2+r1**2+r2**2+r3**2)/s**2)*increment )/e0
+    !!$                 e_LH = two*abs(Z(i,j))/Zc-one
+    !!$                 !write (*,*) energy_rel2,e_LH
+    !!$              end do
+                  ! end to be erased afterwards
+
+                  if (sigma2 .gt. zero) then
+                     C(i,j)   = C(i,j)   - two*D*r0*increment/s
+                     C(i+1,j) = C(i+1,j) + increment/s
+                     C(i-1,j) = C(i-1,j) + increment/s
+                     C(i,j+1) = C(i,j+1) + increment/s
+                     C(i,j-1) = C(i,j-1) + increment/s
                   else
                      C(i,j)   = C(i,j)   - two*D*increment/s
                      C(i+1,j) = C(i+1,j) + r0*increment/s
                      C(i-1,j) = C(i-1,j) + r1*increment/s
                      C(i,j+1) = C(i,j+1) + r2*increment/s
                      C(i,j-1) = C(i,j-1) + r3*increment/s
-                  end if
-              endif
+                  endif
 
-              ! Energy released
-              if (unstable .eq. 0) then ! then we are ok to avalanche
-                energy0 = energy0 + energy_rel0
-                energy = energy + energy_rel
-                energy2 = energy2 + energy_rel2
-              else
-                  unstable = 0 ! Resets unstable for future iterations
-              end if
-           endif
-        enddo
-     enddo
-!     if (energy2 .lt. zero) then ! This is for the model where we let unstable = 0 but only avalanche when
-!         energy = zero ! the energy of the avalanche is positive
-!     end if
+                  ! Energy released
+                  energy0 = energy0 + energy_rel0
+                  energy = energy + energy_rel
+                  energy2 = energy2 + energy_rel2
+               endif
+            enddo
+         enddo
+         !if (verbose) write (*,*) "[DEB] e",energy,first_node
 
-     ! Do the avalanche or update lattice
-     if (energy .ne. zero) then
-        if (verbose) then
-           Write (*,*) "--> Avalanching on it",iter," (with e=",energy,")"
-        endif
-        old_energy = sum(B*B)/e0
-        do i = 2,Nx-1
-           do j = 2,Ny-1
-              B(i,j) = B(i,j) + C(i,j)
-              C(i,j)=zero
-           enddo
-        enddo
-        if (name(1:1) == 'F') then !current definition of the energy
-            lattice_energy(iter) = 0
+         ! Do the avalanche or update lattice
+         if (energy .ne. zero) then
+            if (verbose) then
+               Write (*,*) "--> Avalanching on it",iter," (with e=",energy,")"
+            endif
+            old_energy = sum(B*B)/e0
             do i = 2,Nx-1
                do j = 2,Ny-1
-                  call current(cur_temp, B, i, j, Nx, Ny)
-                  lattice_energy(iter) = lattice_energy(iter) + B(i,j)*cur_temp/two
+                  B(i,j) = B(i,j) + C(i,j)
+                  C(i,j)=zero
                enddo
             enddo
-        else
             lattice_energy(iter)  = sum(B*B)/e0
-        end if
-        !energy_released(iter) = energy
-        energy_released(iter) = energy2
-        if (iter .eq. 1) then
-           energy_released2(iter) = zero
-        else
-           energy_released2(iter) = lattice_energy(iter-1)-lattice_energy(iter)
-        endif
+            !energy_released(iter) = energy
+            energy_released(iter) = energy2
+            if (iter .eq. 1) then
+               energy_released2(iter) = zero
+            else
+               energy_released2(iter) = lattice_energy(iter-1)-lattice_energy(iter)
+            endif
 
-        !!! TO BE ERASED
-        !energy_released(iter) = energy0
-        !!! END
+            !!! TO BE ERASED
+            !energy_released(iter) = energy0
+            !!! END
 
-        iter=iter+1
-!!$        ! Try a continuous forcing
-!!$        if (sigma1 .lt. zero) then
-!!$           do i = 2,Nx-1
-!!$              do j = 2,Ny-1
-!!$                 B(i,j) = B(i,j)*(one+eps_drive)
-!!$              enddo
-!!$           enddo
-!!$        endif
-     else
-        if (eps_drive .lt. zero) then
-           !G&V model
-           if (verbose) write (*,*) "GV model"
-           meanB = sum(B)/(Nx*Ny)
-           my_rand=ran1(idum_run)
-           deltaB = (my_rand/sigma2)**(one/(-sigma1))-one
-           itran = 1
-           do while ((deltaB .gt. 1e-1*meanB) .and. (itran .le. itrmax))
-              my_rand=ran1(idum_run)
-              deltaB = (my_rand/sigma2)**(one/(-sigma1))-one
-              itran=itran+1
-           enddo
-           if (itran .ge. itrmax) write (*,*) 'Warning, a delta B could be too large!'
-           my_rand_i=ran1(idum_run)
-           i = 2+int((nx-2)*my_rand_i)
-           my_rand_j=ran1(idum_run)
-           j = 2+int((ny-2)*my_rand_j)
-           B(i,j) = B(i,j) + deltaB
-           lattice_energy(iter)  = sum(B*B)/e0
-           energy_released(iter) = zero
-           iter = iter + 1
-        else if (eps_drive .eq. zero) then
-           ! Lu & Hamilton model
-           if (verbose) write (*,*) "LH model"
-           my_rand=ran1(idum_run)
-           deltaB = (sigma2-sigma1)*my_rand + sigma1
-           my_rand_i=ran1(idum_run)
-           i = 2+int((nx-2)*my_rand_i)
-           my_rand_j=ran1(idum_run)
-           j = 2+int((ny-2)*my_rand_j)
-           B(i,j) = B(i,j) + deltaB
-           lattice_energy(iter)  = sum(B*B)/e0
-           energy_released(iter) = zero
-           iter = iter + 1
-        else
-           ! Determinsitic forcing
-           if (sigma1 .eq. zero) then 
-              ! accelerate iteration loop
-              !niter_to_do = int(ceiling(log(Zc/maxval(abs(Z)))/log(one+eps_drive)))
-              niter_to_do = int(log(Zc/maxval(abs(Z)))/log(one+eps_drive))+1
-              if (verbose) then
-                 write (*,*) '[DEBUG]: ',log(Zc/maxval(abs(Z))),log(one+eps_drive),log(Zc/maxval(abs(Z)))/log(one+eps_drive)
-                 write (*,*) '[DEBUG]: ',Zc,maxval(abs(Z)),niter_to_do
-              endif
-              if (niter_to_do .eq. 0) niter_to_do = 1 ! just a sanity check
-              if (niter_to_do .lt. 0) then
-                  if (name(1:1) == 'F') then ! for some farhang models, we leave some nodes undistributed even if curv > Zc
-                      cur_temp = 0 ! so we use the biggest curv under Zc to drive
-                      do i = 2,Nx-1
-                        do j = 2,Ny-1
-                            if (Z(i,j) .lt. Zc) then
-                                if (Z(i,j) .gt. cur_temp) then
-                                    cur_temp = Z(i,j)
-                                end if
-                            end if
-                        enddo
-                      enddo
-                      niter_to_do = int(log(Zc/cur_temp)/log(one+eps_drive))+2
-                      if (niter_to_do > 100) then
-                          niter_to_do = 100
-                      end if
-                      !write (*,*) niter_to_do
+            iter=iter+1
+    !!$        ! Try a continuous forcing
+    !!$        if (sigma1 .lt. zero) then
+    !!$           do i = 2,Nx-1
+    !!$              do j = 2,Ny-1
+    !!$                 B(i,j) = B(i,j)*(one+eps_drive)
+    !!$              enddo
+    !!$           enddo
+    !!$        endif
+         else
+            if (eps_drive .lt. zero) then
+               !G&V model
+               if (verbose) write (*,*) "GV model"
+               meanB = sum(B)/(Nx*Ny)
+               my_rand=ran1(idum_run)
+               deltaB = (my_rand/sigma2)**(one/(-sigma1))-one
+               itran = 1
+               do while ((deltaB .gt. 1e-1*meanB) .and. (itran .le. itrmax))
+                  my_rand=ran1(idum_run)
+                  deltaB = (my_rand/sigma2)**(one/(-sigma1))-one
+                  itran=itran+1
+               enddo
+               if (itran .ge. itrmax) write (*,*) 'Warning, a delta B could be too large!'
+               my_rand_i=ran1(idum_run)
+               i = 2+int((nx-2)*my_rand_i)
+               my_rand_j=ran1(idum_run)
+               j = 2+int((ny-2)*my_rand_j)
+               B(i,j) = B(i,j) + deltaB
+               lattice_energy(iter)  = sum(B*B)/e0
+               energy_released(iter) = zero
+               iter = iter + 1
+            else if (eps_drive .eq. zero) then
+               ! Lu & Hamilton model
+               if (verbose) write (*,*) "LH model"
+               my_rand=ran1(idum_run)
+               deltaB = (sigma2-sigma1)*my_rand + sigma1
+               my_rand_i=ran1(idum_run)
+               i = 2+int((nx-2)*my_rand_i)
+               my_rand_j=ran1(idum_run)
+               j = 2+int((ny-2)*my_rand_j)
+               B(i,j) = B(i,j) + deltaB
+               lattice_energy(iter)  = sum(B*B)/e0
+               energy_released(iter) = zero
+               iter = iter + 1
+            else
+               ! Determinsitic forcing
+               if (sigma1 .eq. zero) then
+                  ! accelerate iteration loop
+                  !niter_to_do = int(ceiling(log(Zc/maxval(abs(Z)))/log(one+eps_drive)))
+                  niter_to_do = int(log(Zc/maxval(abs(Z)))/log(one+eps_drive))+1
+                  if (verbose) then
+                     write (*,*) '[DEBUG]: ',log(Zc/maxval(abs(Z))),log(one+eps_drive),log(Zc/maxval(abs(Z)))/log(one+eps_drive)
+                     write (*,*) '[DEBUG]: ',Zc,maxval(abs(Z)),niter_to_do
+                  endif
+                  if (niter_to_do .eq. 0) niter_to_do = 1 ! just a sanity check
+                  if (niter_to_do .lt. 0) niter_to_do = Niter-iter+1
+                  if (niter_to_do .eq. 1) then
+                     if (last_iter_oneiter .eq. iter-1) then
+                        write (*,*) 'Ouch, doing only 1 iterations, pb is still here!'
+                     endif
+                     last_iter_oneiter = iter
+                  endif
+                  ! check if we do not do too many iterations
+                  niter_to_do = min(niter_to_do,Niter-iter+1)
+                  if (verbose) then
+                     write (*,*) "Doing",niter_to_do,"iterations at once..."
+                     write (*,*) "We are at iter=",iter,'and we want to do ',Niter,' iterations'
+                     write (*,*) "It will bring to ",iter+niter_to_do-1,"its in total."
+                     write (*,*) '[DEBUG]: ',log(Zc/maxval(abs(Z))),log(one+eps_drive)
+                     write (*,*) '[DEBUG]: ',Zc,maxval(abs(Z))
+                  endif
+                  lattice_energy(iter) = (sum(B*B)/e0)*(one+eps_drive)**2
+                  if (niter_to_do .gt. 1) then
+                     do iter_tmp = iter+1,iter+niter_to_do-1
+                        lattice_energy(iter_tmp)  = lattice_energy(iter)*((one+eps_drive)**(2*(iter_tmp-iter)))
+                     enddo
+                  endif
+                  do i = 2,Nx-1
+                     do j = 2,Ny-1
+                        B(i,j) = B(i,j)*((one+eps_drive)**niter_to_do)
+                     enddo
+                  enddo
+                  energy_released(iter:iter+niter_to_do-1) = zero
+                  iter=iter+niter_to_do
+               else
+                  niter_to_do = int(log(Zc/maxval(abs(Z)))/log(one+eps_drive))+1
+                  if (niter_to_do .eq. 0) niter_to_do = 1 ! just a sanity check
+                  if (niter_to_do .lt. 0) niter_to_do = Niter-iter+1
+                  niter_to_do = min(niter_to_do,Niter-iter+1)
+                  ! Do the forcing
+                  !if (sigma1 .lt. zero) then
+                  !   step_rw = ran2(idum_rw)
+                  !   if (step_rw .gt. 0.5) then
+                  !      c_rw = c_rw - sigma1
+                  !   else
+                  !      c_rw = c_rw + sigma1
+                  !   endif
+                  !else
+                  !   c_rw = 1.0
+                  !endif
+                  if (sigma1 .lt. zero) then
+                     loc_it = iter - it_ch
+                     if ((c_rw .eq. 0._mp) .or. (loc_it .ge. l_its)) then
+                        l_its = int(gauss_rand_dp(idum_exp,sigma2,sigma2/2.))
+                        c_rw = exp_rand_dp(idum_rw,-sigma1)
+                        do while (c_rw/eps_drive .gt. (niter_to_do+1))
+                           c_rw = exp_rand_dp(idum_rw,-sigma1)
+                        end do
+                        it_ch = iter+1
+                     endif
                   else
-                      niter_to_do = Niter-iter+1
-                  end if
-              end if
-              if (niter_to_do .eq. 1) then
-                 if (last_iter_oneiter .eq. iter-1) then
-                    write (*,*) 'Ouch, doing only 1 iterations, pb is still here!'
-                 endif
-                 last_iter_oneiter = iter
-              endif
-              ! check if we do not do too many iterations
-              niter_to_do = min(niter_to_do,Niter-iter+1) 
-              if (verbose) then
-                 write (*,*) "Doing",niter_to_do,"iterations at once..."
-                 write (*,*) "We are at iter=",iter,'and we want to do ',Niter,' iterations'
-                 write (*,*) "It will bring to ",iter+niter_to_do-1,"its in total."
-                 write (*,*) '[DEBUG]: ',log(Zc/maxval(abs(Z))),log(one+eps_drive)
-                 write (*,*) '[DEBUG]: ',Zc,maxval(abs(Z))
-              endif
-              if (name(1:1) == 'F') then
-                lattice_energy(iter) = 0
-                do i = 2,Nx-1
-                    do j = 2,Ny-1
-                        call current(cur_temp, B, i, j, Nx, Ny)
-                        lattice_energy(iter) = lattice_energy(iter) + B(i,j)*cur_temp/two
-                    enddo
-                enddo
-                lattice_energy(iter) = lattice_energy(iter)*(one+eps_drive)**2
-              else
-                lattice_energy(iter) = (sum(B*B)/e0)*(one+eps_drive)**2
-              end if
-              if (niter_to_do .gt. 1) then
-                 do iter_tmp = iter+1,iter+niter_to_do-1
-                    lattice_energy(iter_tmp)  = lattice_energy(iter)*((one+eps_drive)**(2*(iter_tmp-iter)))
-                 enddo
-              endif
-              do i = 2,Nx-1
-                 do j = 2,Ny-1
-                    B(i,j) = B(i,j)*((one+eps_drive)**niter_to_do)
-                 enddo
-              enddo
-              energy_released(iter:iter+niter_to_do-1) = zero
-              iter=iter+niter_to_do
-           else
-              niter_to_do = int(log(Zc/maxval(abs(Z)))/log(one+eps_drive))+1
-              if (niter_to_do .eq. 0) niter_to_do = 1 ! just a sanity check
-              if (niter_to_do .lt. 0) niter_to_do = Niter-iter+1
-              niter_to_do = min(niter_to_do,Niter-iter+1) 
-              ! Do the forcing
-              !if (sigma1 .lt. zero) then
-              !   step_rw = ran2(idum_rw)
-              !   if (step_rw .gt. 0.5) then
-              !      c_rw = c_rw - sigma1
-              !   else
-              !      c_rw = c_rw + sigma1
-              !   endif
-              !else 
-              !   c_rw = 1.0
-              !endif
-              if (sigma1 .lt. zero) then
-                 loc_it = iter - it_ch
-                 if ((c_rw .eq. 0._mp) .or. (loc_it .ge. l_its)) then
-                    l_its = int(gauss_rand_dp(idum_exp,sigma2,sigma2/2.))
-                    c_rw = exp_rand_dp(idum_rw,-sigma1)
-                    do while (c_rw/eps_drive .gt. (niter_to_do+1))
-                       c_rw = exp_rand_dp(idum_rw,-sigma1)
-                    end do
-                    it_ch = iter+1
-                 endif
-              else
-                 c_rw = eps_drive
-              endif
-              step_rw = max(step_rw,c_rw)
-              do i = 2,Nx-1
-                 do j = 2,Ny-1
-                    !B(i,j) = B(i,j)*(one+abs(c_rw)*eps_drive)
-                    B(i,j) = B(i,j)*(one+c_rw)
-                 enddo
-              enddo
-              energy_released(iter)=zero
-              lattice_energy(iter)=sum(B*B)/e0
-              iter=iter+1           
-           endif
-        endif
-     endif
+                     c_rw = eps_drive
+                  endif
+                  step_rw = max(step_rw,c_rw)
+                  do i = 2,Nx-1
+                     do j = 2,Ny-1
+                        !B(i,j) = B(i,j)*(one+abs(c_rw)*eps_drive)
+                        B(i,j) = B(i,j)*(one+c_rw)
+                     enddo
+                  enddo
+                  energy_released(iter)=zero
+                  lattice_energy(iter)=sum(B*B)/e0
+                  iter=iter+1
+               endif
+            endif
+            endif
+      end if
   enddo
 
   !write (*,*) 'The max drive was',step_rw
@@ -937,7 +1041,7 @@ subroutine do_avalanche_generic_ho(Niter, &                 ! INPUT
      Nx,Ny,Binit,Zc,D_nc,eps_drive,sigma1,sigma2,lh_soc,idum_init,verbose, &     ! OPTIONAL
      lattice_energy,energy_released,energy_released2,B,Z)         ! OUTPUTS
   use permutations
-  integer, parameter :: dp = selected_real_kind(15,307) ! double precision      
+  integer, parameter :: dp = selected_real_kind(15,307) ! double precision
   integer, parameter :: mp =dp
   Integer    :: Nx,Ny
 !f2py integer optional,intent(in) :: Nx=16
@@ -953,7 +1057,7 @@ subroutine do_avalanche_generic_ho(Niter, &                 ! INPUT
   Real(mp) :: lh_soc
 !f2py real(mp) optional,intent(in) :: lh_soc=0.0
   Integer :: idum_init
-!f2py integer optional, intent(in) :: idum_init = -67209495 
+!f2py integer optional, intent(in) :: idum_init = -67209495
   Real(mp) :: lattice_energy(Niter),energy_released(Niter),energy_released2(Niter)
 !f2py intent(out) lattice_energy
 !f2py intent(out) energy_released
@@ -994,7 +1098,7 @@ subroutine do_avalanche_generic_ho(Niter, &                 ! INPUT
   itrmax=100
   first_node = .true.
   first_node_rdist = .true.
-  
+
   ! For random numbers
   ! call init_random_seed()
   idum_run = idum_init
@@ -1045,7 +1149,7 @@ subroutine do_avalanche_generic_ho(Niter, &                 ! INPUT
                 (1._mp/12._mp)*(B(i+2,j)+B(i-2,j)+B(i,j+2)+B(i,j-2)) )/5._mp
            if (lh_soc .ge. zero) then
               ZZ = abs(Z(i,j))
-              increment = Zc*Z(i,j)/abs(Z(i,j)) 
+              increment = Zc*Z(i,j)/abs(Z(i,j))
            else
               ZZ = abs(Z(i,j))
               increment = (two*Zc-ZZ)*ran1(idum_run) + ZZ - Zc
@@ -1100,12 +1204,12 @@ subroutine do_avalanche_generic_ho(Niter, &                 ! INPUT
                  !ra = 1.0
               endif
               C(i,j)   = C(i,j)   - two*D*increment/s
-              C(i+1,j) = C(i+1,j) + r0*increment/s 
+              C(i+1,j) = C(i+1,j) + r0*increment/s
               C(i-1,j) = C(i-1,j) + r1*increment/s
               C(i,j+1) = C(i,j+1) + r2*increment/s
               C(i,j-1) = C(i,j-1) + r3*increment/s
               energy_rel = (two*abs(Z(i,j))/Zc-one) - &
-                   (r_dnc-one)*D*increment*(B(i,j)-Z(i,j))/(Zc**2) - (r_dnc**2-one)/s 
+                   (r_dnc-one)*D*increment*(B(i,j)-Z(i,j))/(Zc**2) - (r_dnc**2-one)/s
               energy_rel2 = increment*( (four*D/s)*B(i,j) - &
                    (two/s)*(r0*B(i+1,j) + r1*B(i-1,j) +r2*B(i,j+1) + r3*B(i,j-1)) - &
                    ((four*(D**2)+r0**2+r1**2+r2**2+r3**2)/s**2)*increment )/e0
@@ -1116,7 +1220,7 @@ subroutine do_avalanche_generic_ho(Niter, &                 ! INPUT
         enddo
      enddo
      if (verbose) write (*,*) "[DEB] e",energy,first_node
-     
+
      ! Do the avalanche or update lattice
      if (energy .ne. zero) then
         if (verbose) then
@@ -1132,9 +1236,9 @@ subroutine do_avalanche_generic_ho(Niter, &                 ! INPUT
         lattice_energy(iter)  = sum(B*B)/e0
         !energy_released(iter) = energy
         energy_released(iter) = energy2
-        if (iter .eq. 1) then 
+        if (iter .eq. 1) then
            energy_released2(iter) = zero
-        else 
+        else
            energy_released2(iter) = lattice_energy(iter-1)-lattice_energy(iter)
         endif
         iter=iter+1
@@ -1173,9 +1277,9 @@ subroutine do_avalanche_generic_ho(Niter, &                 ! INPUT
            lattice_energy(iter)  = sum(B*B)/e0
            energy_released(iter) = zero
            iter = iter + 1
-        else 
+        else
            ! Determinsitic forcing
-           if (sigma1 .eq. zero) then 
+           if (sigma1 .eq. zero) then
               ! accelerate iteration loop
               !niter_to_do = int(ceiling(log(Zc/maxval(abs(Z)))/log(one+eps_drive)))
               niter_to_do = int(log(Zc/maxval(abs(Z)))/log(one+eps_drive))+1
@@ -1192,7 +1296,7 @@ subroutine do_avalanche_generic_ho(Niter, &                 ! INPUT
                  last_iter_oneiter = iter
               endif
               ! check if we do not do too many iterations
-              niter_to_do = min(niter_to_do,Niter-iter+1) 
+              niter_to_do = min(niter_to_do,Niter-iter+1)
               if (verbose) then
                  write (*,*) "Doing",niter_to_do,"iterations at once..."
                  write (*,*) "We are at iter=",iter,'and we want to do ',Niter,' iterations'
@@ -1222,11 +1326,11 @@ subroutine do_avalanche_generic_ho(Niter, &                 ! INPUT
               enddo
               energy_released(iter)=zero
               lattice_energy(iter)=sum(B*B)/e0
-              iter=iter+1           
+              iter=iter+1
            endif
         endif
      endif
-     
+
   enddo
 
 end subroutine do_avalanche_generic_ho
@@ -1238,7 +1342,7 @@ subroutine do_avalanche_generic_NCWEIRD(Niter, &                 ! INPUT
      Nx,Ny,Binit,Zc,D_nc,eps_drive,sigma1,sigma2,lh_soc,idum_init,verbose, &     ! OPTIONAL
      lattice_energy,energy_released,energy_released2,B,Z)         ! OUTPUTS
   use permutations
-  integer, parameter :: dp = selected_real_kind(15,307) ! double precision      
+  integer, parameter :: dp = selected_real_kind(15,307) ! double precision
   integer, parameter :: mp =dp
   Integer    :: Nx,Ny
 !f2py integer optional,intent(in) :: Nx=16
@@ -1254,7 +1358,7 @@ subroutine do_avalanche_generic_NCWEIRD(Niter, &                 ! INPUT
   Real(mp) :: lh_soc
 !f2py real(mp) optional,intent(in) :: lh_soc=0.0
   Integer :: idum_init
-!f2py integer optional, intent(in) :: idum_init = -67209495 
+!f2py integer optional, intent(in) :: idum_init = -67209495
   Real(mp) :: lattice_energy(Niter),energy_released(Niter),energy_released2(Niter)
 !f2py intent(out) lattice_energy
 !f2py intent(out) energy_released
@@ -1295,7 +1399,7 @@ subroutine do_avalanche_generic_NCWEIRD(Niter, &                 ! INPUT
   itrmax=100
   first_node = .true.
   first_node_rdist = .true.
-  
+
   ! For random numbers
   ! call init_random_seed()
   idum_run = idum_init
@@ -1338,7 +1442,7 @@ subroutine do_avalanche_generic_NCWEIRD(Niter, &                 ! INPUT
            Z(i,j) = B(i,j) - (B(i+1,j)+B(i-1,j)+B(i,j+1)+B(i,j-1))/(two*D)
            if (lh_soc .ge. zero) then
               ZZ = abs(Z(i,j))
-              increment = Zc*Z(i,j)/abs(Z(i,j)) 
+              increment = Zc*Z(i,j)/abs(Z(i,j))
            else
               ZZ = abs(Z(i,j))
               increment = (two*Zc-ZZ)*ran1(idum_run) + ZZ - Zc
@@ -1398,12 +1502,12 @@ subroutine do_avalanche_generic_NCWEIRD(Niter, &                 ! INPUT
                  !ra = 1.0
               endif
               C(i,j)   = C(i,j)   - two*D*increment/s
-              C(i+1,j) = C(i+1,j) + r0*increment/s 
+              C(i+1,j) = C(i+1,j) + r0*increment/s
               C(i-1,j) = C(i-1,j) + r1*increment/s
               C(i,j+1) = C(i,j+1) + r2*increment/s
               C(i,j-1) = C(i,j-1) + r3*increment/s
               energy_rel = (two*abs(Z(i,j))/Zc-one) - &
-                   (r_dnc-one)*D*increment*(B(i,j)-Z(i,j))/(Zc**2) - (r_dnc**2-one)/s 
+                   (r_dnc-one)*D*increment*(B(i,j)-Z(i,j))/(Zc**2) - (r_dnc**2-one)/s
               energy_rel2 = increment*( (four*D/s)*B(i,j) - &
                    (two/s)*(r0*B(i+1,j) + r1*B(i-1,j) +r2*B(i,j+1) + r3*B(i,j-1)) - &
                    ((four*(D**2)+r0**2+r1**2+r2**2+r3**2)/s**2)*increment )/e0
@@ -1414,7 +1518,7 @@ subroutine do_avalanche_generic_NCWEIRD(Niter, &                 ! INPUT
         enddo
      enddo
      if (verbose) write (*,*) "[DEB] e",energy,first_node
-     
+
      ! Do the avalanche or update lattice
      if (energy .ne. zero) then
         if (verbose) then
@@ -1430,9 +1534,9 @@ subroutine do_avalanche_generic_NCWEIRD(Niter, &                 ! INPUT
         lattice_energy(iter)  = sum(B*B)/e0
         !energy_released(iter) = energy
         energy_released(iter) = energy2
-        if (iter .eq. 1) then 
+        if (iter .eq. 1) then
            energy_released2(iter) = zero
-        else 
+        else
            energy_released2(iter) = lattice_energy(iter-1)-lattice_energy(iter)
         endif
         iter=iter+1
@@ -1471,9 +1575,9 @@ subroutine do_avalanche_generic_NCWEIRD(Niter, &                 ! INPUT
            lattice_energy(iter)  = sum(B*B)/e0
            energy_released(iter) = zero
            iter = iter + 1
-        else 
+        else
            ! Determinsitic forcing
-           if (sigma1 .eq. zero) then 
+           if (sigma1 .eq. zero) then
               ! accelerate iteration loop
               !niter_to_do = int(ceiling(log(Zc/maxval(abs(Z)))/log(one+eps_drive)))
               niter_to_do = int(log(Zc/maxval(abs(Z)))/log(one+eps_drive))+1
@@ -1490,7 +1594,7 @@ subroutine do_avalanche_generic_NCWEIRD(Niter, &                 ! INPUT
                  last_iter_oneiter = iter
               endif
               ! check if we do not do too many iterations
-              niter_to_do = min(niter_to_do,Niter-iter+1) 
+              niter_to_do = min(niter_to_do,Niter-iter+1)
               if (verbose) then
                  write (*,*) "Doing",niter_to_do,"iterations at once..."
                  write (*,*) "We are at iter=",iter,'and we want to do ',Niter,' iterations'
@@ -1520,24 +1624,24 @@ subroutine do_avalanche_generic_NCWEIRD(Niter, &                 ! INPUT
               enddo
               energy_released(iter)=zero
               lattice_energy(iter)=sum(B*B)/e0
-              iter=iter+1           
+              iter=iter+1
            endif
         endif
      endif
-     
+
   enddo
 
 end subroutine do_avalanche_generic_NCWEIRD
 
 
-!! subroutine test_tapenade(Niter, &                
+!! subroutine test_tapenade(Niter, &
 !!      Nx,Ny,Binit,Zc,D_nc,eps_drive,sigma1,sigma2,lh_soc,idum_obs,idum_init,&
-!!      verbose,binsize,threshold,tw, &     
-!!      lattice_energy,energy_released,energy_released2,B,Z,gradJ)         
-!! 
+!!      verbose,binsize,threshold,tw, &
+!!      lattice_energy,energy_released,energy_released2,B,Z,gradJ)
+!!
 !!   implicit none
-!!   integer, parameter :: sp = selected_real_kind(6,37) ! single precision        
-!!   integer, parameter :: dp = selected_real_kind(15,307) ! double precision      
+!!   integer, parameter :: sp = selected_real_kind(6,37) ! single precision
+!!   integer, parameter :: dp = selected_real_kind(15,307) ! double precision
 !!   integer, parameter :: mp =dp
 !!   Integer    :: Nx,Ny
 !! !f2py integer optional,intent(in) :: Nx=16
@@ -1553,9 +1657,9 @@ end subroutine do_avalanche_generic_NCWEIRD
 !!   Real(mp) :: lh_soc
 !! !f2py real(mp) optional,intent(in) :: lh_soc=0.0
 !!   Integer :: idum_obs
-!! !f2py integer optional, intent(in) :: idum_obs = -67209495 
+!! !f2py integer optional, intent(in) :: idum_obs = -67209495
 !!   Integer :: idum_init
-!! !f2py integer optional, intent(in) :: idum_init = -827774 
+!! !f2py integer optional, intent(in) :: idum_init = -827774
 !!   Real(mp) :: lattice_energy(Niter),energy_released(Niter),energy_released2(Niter)
 !! !f2py intent(out) lattice_energy
 !! !f2py intent(out) energy_released
@@ -1582,12 +1686,12 @@ end subroutine do_avalanche_generic_NCWEIRD
 !! !f2py real(mp) optional, intent(in) :: threshold = 0.0
 !!   Integer  :: tw
 !! !f2py integer optional, intent(in) :: tw = 100
-!! 
+!!
 !!   !****** Interface
 !!   interface
 !!      subroutine mkobs(nt,Ereleased,Erelavg,binsize,threshold)
-!!        integer, parameter :: sp = selected_real_kind(6,37)    
-!!        integer, parameter :: dp = selected_real_kind(15,307) 
+!!        integer, parameter :: sp = selected_real_kind(6,37)
+!!        integer, parameter :: dp = selected_real_kind(15,307)
 !!        integer, parameter :: mp = dp
 !!        Integer :: nt
 !!        real(mp), dimension(nt) :: Ereleased
@@ -1595,43 +1699,43 @@ end subroutine do_avalanche_generic_NCWEIRD
 !!        integer,  intent(in), optional :: binsize
 !!        real(mp), intent(in), optional :: threshold
 !!      end subroutine mkobs
-!!   end interface  
+!!   end interface
 !!   !********* Local variables
 !!   Real(mp) :: calc_c,Jcalc_c
 !!   Real(mp), allocatable :: obs_Erelavg(:),tmp_e(:)
 !!   Integer :: last_idum
-!! 
+!!
 !!   Allocate(obs_Erelavg(Niter))
 !!   Allocate(tmp_e(Niter))
-!! 
+!!
 !!   ! Do soc to generate observations
-!!   call do_avalanche_generic_dp(Niter, &                
-!!      Nx,Ny,Binit,Zc,D_nc,eps_drive,sigma1,sigma2,lh_soc,idum_obs,verbose, &     
+!!   call do_avalanche_generic_dp(Niter, &
+!!      Nx,Ny,Binit,Zc,D_nc,eps_drive,sigma1,sigma2,lh_soc,idum_obs,verbose, &
 !!      lattice_energy,energy_released,energy_released2,B,Z,last_idum)
 !!   call mkobs(Niter,energy_released,obs_Erelavg,binsize=binsize,threshold=threshold)
-!! 
+!!
 !!   ! Calculate first cost
-!!   call calc_cost(Niter, &                
-!!        Nx,Ny,Binit,Zc,D_nc,eps_drive,sigma1,sigma2,lh_soc,idum_init, &     
+!!   call calc_cost(Niter, &
+!!        Nx,Ny,Binit,Zc,D_nc,eps_drive,sigma1,sigma2,lh_soc,idum_init, &
 !!        binsize,threshold,tw,obs_Erelavg,calc_c)
 !!   write (*,*) "Initial cost",calc_c
 !!   Jcalc_c = 1.0
-!! 
+!!
 !!   ! Compute the gradient of the cost function
-!!   call calc_cost_b(Niter, &                
-!!        Nx,Ny,Binit,gradJ,Zc,D_nc,eps_drive,sigma1,sigma2,lh_soc,idum_init, &     
+!!   call calc_cost_b(Niter, &
+!!        Nx,Ny,Binit,gradJ,Zc,D_nc,eps_drive,sigma1,sigma2,lh_soc,idum_init, &
 !!        binsize,threshold,tw,obs_Erelavg,calc_c,Jcalc_c)
-!! 
+!!
 !!   Deallocate(obs_Erelavg)
 !!   Deallocate(tmp_e)
-!! 
+!!
 !! end subroutine test_tapenade
 
 
 ! Use 4Dvar method to find a new initial condition
-subroutine find_new_init(Niter, &                
+subroutine find_new_init(Niter, &
      Nx,Ny,Binit,Zc,D_nc,eps_drive,sigma1,sigma2,lh_soc,idum_init,&
-     verbose,binsize,threshold,tw,lambd,n_simplex,temp,idum_anneal,niter_step,n_steps, &     
+     verbose,binsize,threshold,tw,lambd,n_simplex,temp,idum_anneal,niter_step,n_steps, &
      obs_Erelavg,VersionCost,Emoy,Sigma,Emax,Emin,EVsaved,Nev,algo,new_init,final_grad,final_cost)
 
   use Minimization
@@ -1651,7 +1755,7 @@ subroutine find_new_init(Niter, &
   Real(mp) :: lh_soc
 !f2py real(mp) optional,intent(in) :: lh_soc=0.0
   Integer :: idum_init
-!f2py integer optional, intent(in) :: idum_init = -827774 
+!f2py integer optional, intent(in) :: idum_init = -827774
   Real(mp) :: Binit(Nx,Ny)
 !f2py real(mp) optional, intent(in), depend(Nx,Ny) :: Binit = 0.0
   Logical :: verbose
@@ -1681,11 +1785,11 @@ subroutine find_new_init(Niter, &
   Real(mp) :: Emoy
 !f2py real(mp) optional, intent(in) :: Emoy = 1.
   Real(mp) :: Sigma
-!f2py real(mp) optional, intent(in) :: Sigma = 1.  
+!f2py real(mp) optional, intent(in) :: Sigma = 1.
   Real(mp) :: Emax
 !f2py real(mp) optional, intent(in) :: Emax = 1.
   Real(mp) :: Emin
-!f2py real(mp) optional, intent(in) :: Emin = 1.  
+!f2py real(mp) optional, intent(in) :: Emin = 1.
   Integer :: Nev
 !f2py integer optional, intent(in) :: Nev = 1
   Character*(*) :: EVsaved
@@ -1721,49 +1825,49 @@ subroutine find_new_init(Niter, &
   ! Do a minimization
   iter = 0
   fret = 0
-  if (verbose) then 
+  if (verbose) then
      write (*,*) 'Starting minimization process...'
   endif
   if (algo .eq. 0) then
      Gtol = 1e-11
      ! CG
-     if (verbose) write (*,*) 'Minimizing with CG' 
+     if (verbose) write (*,*) 'Minimizing with CG'
      write (*,*) "TO BE CODED AGAIN WITH MODERN SYNTAX"
-     !Call frprmn(Niter,Nx,Ny,Zc,D_nc,eps_drive,sigma1,sigma2,lh_soc,idum_init, &     
-     !     binsize,threshold,tw,obs_Erelavg,Emoy,Sigma,Emax,Emin,& 
+     !Call frprmn(Niter,Nx,Ny,Zc,D_nc,eps_drive,sigma1,sigma2,lh_soc,idum_init, &
+     !     binsize,threshold,tw,obs_Erelavg,Emoy,Sigma,Emax,Emin,&
      !     Gtol,iter,verbose,fret,&
      !     Btmp,final_grad)
   else if (algo .eq. 1) then
      Gtol = 1e-14
-     if (verbose) write (*,*) 'Minimizing with QN' 
+     if (verbose) write (*,*) 'Minimizing with QN'
      write (*,*) "TO BE CODED AGAIN WITH MODERN SYNTAX"
      ! QN
-     !Call QNsolv(Niter,Nx,Ny,Zc,D_nc,eps_drive,sigma1,sigma2,lh_soc,idum_init, &     
-     !     binsize,threshold,tw,obs_Erelavg,Emoy,Sigma,Emax,Emin,& 
+     !Call QNsolv(Niter,Nx,Ny,Zc,D_nc,eps_drive,sigma1,sigma2,lh_soc,idum_init, &
+     !     binsize,threshold,tw,obs_Erelavg,Emoy,Sigma,Emax,Emin,&
      !     Gtol,iter,verbose,fret,&
      !     Btmp)!,final_grad)
   else if (algo .eq. 2) then
      Gtol = 1e-8
-     if (verbose) write (*,*) 'Minimizing with simplex' 
+     if (verbose) write (*,*) 'Minimizing with simplex'
      ! Simplex
-     Call simplex(Niter,Nx,Ny,Zc,D_nc,eps_drive,sigma1,sigma2,lh_soc,idum_init, &     
-          binsize,threshold,tw,obs_Erelavg,Emoy,Sigma,& 
+     Call simplex(Niter,Nx,Ny,Zc,D_nc,eps_drive,sigma1,sigma2,lh_soc,idum_init, &
+          binsize,threshold,tw,obs_Erelavg,Emoy,Sigma,&
           Gtol,iter,lambd,n_simplex,&
           Btmp)!,final_grad)
   else if (algo .eq. 3) then
      Gtol = 1e-8
-     if (verbose) write (*,*) 'Minimizing with simulated annealing' 
+     if (verbose) write (*,*) 'Minimizing with simulated annealing'
      ! Simulated annealing
-     Call simanneal(Niter,Nx,Ny,Zc,D_nc,eps_drive,sigma1,sigma2,lh_soc,idum_init, &     
-          binsize,threshold,tw,obs_Erelavg,Emoy,Sigma,Emax,Emin,& 
+     Call simanneal(Niter,Nx,Ny,Zc,D_nc,eps_drive,sigma1,sigma2,lh_soc,idum_init, &
+          binsize,threshold,tw,obs_Erelavg,Emoy,Sigma,Emax,Emin,&
           Gtol,verbose,lambd,n_simplex,temp,idum_anneal,niter_step,n_steps,&
           Btmp,final_cost)
   else if (algo .eq. 4) then
      Gtol = 1e-8
-     if (verbose) write (*,*) 'Minimizing with simulated annealing and EigenVectors decomposition' 
+     if (verbose) write (*,*) 'Minimizing with simulated annealing and EigenVectors decomposition'
      ! Simulated annealing
-     Call simannealEV(Niter,Nx,Ny,Zc,D_nc,eps_drive,sigma1,sigma2,lh_soc,idum_init, &     
-          binsize,threshold,tw,obs_Erelavg,Emoy,Sigma,Emax,Emin,EVsaved,Nev,& 
+     Call simannealEV(Niter,Nx,Ny,Zc,D_nc,eps_drive,sigma1,sigma2,lh_soc,idum_init, &
+          binsize,threshold,tw,obs_Erelavg,Emoy,Sigma,Emax,Emin,EVsaved,Nev,&
           Gtol,verbose,lambd,n_simplex,temp,idum_anneal,niter_step,n_steps,&
           Btmp,final_cost)
   else
@@ -1777,9 +1881,9 @@ subroutine find_new_init(Niter, &
 
 end subroutine find_new_init
 
-subroutine get_cost(Niter, &                
+subroutine get_cost(Niter, &
      Nx,Ny,Binit,Zc,D_nc,eps_drive,sigma1,sigma2,lh_soc,idum_init,&
-     verbose,binsize,threshold,tw, &     
+     verbose,binsize,threshold,tw, &
      obs_Erelavg,VersionCost,cost)
 
   use Prec
@@ -1798,7 +1902,7 @@ subroutine get_cost(Niter, &
   Real(mp)  :: lh_soc
 !f2py real(mp) optional,intent(in) :: lh_soc=0.0
   Integer :: idum_init
-!f2py integer optional, intent(in) :: idum_init = -827774 
+!f2py integer optional, intent(in) :: idum_init = -827774
   Real(mp) :: Binit(Nx,Ny)
 !f2py real(mp) optional, intent(in), depend(Nx,Ny) :: Binit = 0.0
   Logical :: verbose
@@ -1816,8 +1920,8 @@ subroutine get_cost(Niter, &
   Real(mp) :: cost
 !f2py real(mp), intent(out) :: cost
 
-  Call calc_cost(Niter, & 
-       Nx,Ny,Binit,Zc,D_nc,eps_drive,sigma1,sigma2,lh_soc,idum_init, &   
+  Call calc_cost(Niter, &
+       Nx,Ny,Binit,Zc,D_nc,eps_drive,sigma1,sigma2,lh_soc,idum_init, &
        binsize,threshold,tw,obs_Erelavg,VersionCost,cost)
   if (verbose) then
      write (*,*) 'Calculated cost:',cost
